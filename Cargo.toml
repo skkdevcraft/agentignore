@@ -1,0 +1,43 @@
+[package]
+name = "agentfs"
+authors = ["Stoyan Krastev (skkdevcraft)"]
+version = "0.1.0"
+edition = "2024"
+repository = "https://github.com/skkdevcraft/agentfs"
+license = "MIT"
+readme = "README.md"
+rust-version = "1.87"
+homepage = "https://github.com/skkdevcraft/agentfs"
+documentation = "https://docs.rs/agentfs"
+description = "FUSE filesystem that hides files matching .agentignore rules from processes - control what agents can see while building apps"
+keywords = ["fuse", "agent", "filesystem", "cli", "sandbox"]
+categories = ["filesystem", "command-line-utilities"]
+exclude = [
+    ".cargo/",
+    ".devcontainer/",
+    ".vscode/",
+    ".agents/",
+    "test-project/",
+    "skills-lock.json",
+    "AGENTS.md",
+    "docs/prds/",
+]
+
+[[bin]]
+name = "agentfs"
+path = "src/main.rs"
+
+[dependencies]
+fuser = "0.17"
+clap = { version = "4", features = ["derive"] }
+ignore = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+libc = "0.2"
+nix = { version = "0.29", features = ["fs"] }
+ctrlc = "3.4"
+procfs = "0.18"
+regex = "1.12.3"
+
+[dev-dependencies]
+tempfile = "3.27"

@@ -1,0 +1,3 @@
+[alias]
+dev = "run -- mount ./test-project/ /tmp/f2"
+bash = "run -- run -s ./test-project/ bash"
