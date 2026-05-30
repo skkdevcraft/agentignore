@@ -1,11 +1,11 @@
-//! `agentfs run` — Mount, run a command, then unmount (ephemeral).
+//! `agentignore run` — Mount, run a command, then unmount (ephemeral).
 
 use crate::cmd::common::{create_temp_mountpoint, setup_signal_handler, unmount_internal};
-use agentfs::fs::AgentFS;
+use agentignore::fs::AgentFS;
 use std::path::PathBuf;
 use std::process::Command as ProcessCommand;
 
-/// Handle `agentfs run [command...]` with an optional `--source <path>`.
+/// Handle `agentignore run [command...]` with an optional `--source <path>`.
 ///
 /// Sets up a temporary mountpoint, spawns a command inside it, then unmounts
 /// and exits with the command's exit code.

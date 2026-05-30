@@ -1,8 +1,8 @@
-# AgentFS — Policy-Filtered Filesystem for AI Agents
+# AgentIgnore — Policy-Filtered Filesystem for AI Agents
 
 ## Overview
 
-AgentFS is a Linux userspace filesystem implemented using FUSE.
+AgentIgnore is a Linux userspace filesystem implemented using FUSE.
 
 The filesystem exposes a filtered virtual view of a real directory tree. Files and directories matching rules in a `.agentignore` file are completely hidden from processes interacting with the mounted filesystem.
 
@@ -49,7 +49,7 @@ The filesystem should behave as a transparent passthrough filesystem for allowed
 ```text
 Real filesystem
     ↓
-AgentFS (FUSE passthrough filesystem)
+AgentIgnore (FUSE passthrough filesystem)
     ↓
 Mounted filtered view
     ↓
@@ -113,11 +113,11 @@ One of:
 
 # Filesystem Model
 
-AgentFS is a passthrough filesystem.
+AgentIgnore is a passthrough filesystem.
 
 The backing filesystem remains authoritative.
 
-AgentFS only:
+AgentIgnore only:
 
 * mediates visibility
 * enforces policy
@@ -134,7 +134,7 @@ All modifications to visible files affect the real filesystem.
 Example:
 
 ```bash
-agentfs mount /real/project /mnt/agent
+agentignore mount /real/project /mnt/agent
 ```
 
 Where:
@@ -542,7 +542,7 @@ Recommended deployment:
 ```text
 real filesystem
     ↓
-AgentFS mount
+AgentIgnore mount
     ↓
 bubblewrap sandbox
     ↓
@@ -556,7 +556,7 @@ Bubblewrap provides:
 * proc isolation
 * optional network isolation
 
-AgentFS provides:
+AgentIgnore provides:
 
 * filesystem visibility policy
 
@@ -569,13 +569,13 @@ Together they provide strong containment.
 ## Mount
 
 ```bash
-agentfs mount <source> <mountpoint>
+agentignore mount <source> <mountpoint>
 ```
 
 Example:
 
 ```bash
-agentfs mount ~/project /mnt/agent
+agentignore mount ~/project /mnt/agent
 ```
 
 ---
@@ -583,7 +583,7 @@ agentfs mount ~/project /mnt/agent
 ## Unmount
 
 ```bash
-agentfs unmount <mountpoint>
+agentignore unmount <mountpoint>
 ```
 
 ---
@@ -591,7 +591,7 @@ agentfs unmount <mountpoint>
 ## Validate Policy
 
 ```bash
-agentfs check
+agentignore check
 ```
 
 Outputs:
@@ -605,7 +605,7 @@ Outputs:
 ## Explain Decision
 
 ```bash
-agentfs explain path/to/file
+agentignore explain path/to/file
 ```
 
 Outputs:
@@ -684,7 +684,7 @@ secrets/
 Mount:
 
 ```bash
-agentfs mount /project /mnt/agent
+agentignore mount /project /mnt/agent
 ```
 
 Inside mount:

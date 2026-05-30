@@ -1,4 +1,4 @@
-//! CLI subcommands for agentfs.
+//! CLI subcommands for agentignore.
 
 pub mod args;
 pub mod check;

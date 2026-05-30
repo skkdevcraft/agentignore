@@ -1,14 +1,14 @@
 [package]
-name = "agentfs"
+name = "agentignore"
 authors = ["Stoyan Krastev (skkdevcraft)"]
 version = "0.1.0"
 edition = "2024"
-repository = "https://github.com/skkdevcraft/agentfs"
+repository = "https://github.com/skkdevcraft/agentignore"
 license = "MIT"
 readme = "README.md"
 rust-version = "1.87"
-homepage = "https://github.com/skkdevcraft/agentfs"
-documentation = "https://docs.rs/agentfs"
+homepage = "https://github.com/skkdevcraft/agentignore"
+documentation = "https://docs.rs/agentignore"
 description = "FUSE filesystem that hides files matching .agentignore rules from processes - control what agents can see while building apps"
 keywords = ["fuse", "agent", "filesystem", "cli", "sandbox"]
 categories = ["filesystem", "command-line-utilities"]
@@ -24,7 +24,7 @@ exclude = [
 ]
 
 [[bin]]
-name = "agentfs"
+name = "agentignore"
 path = "src/main.rs"
 
 [dependencies]

@@ -4,7 +4,7 @@
 
 ### Added
 
-- Initial release of agentfs — a FUSE filesystem that hides files matching
+- Initial release of agentignore — a FUSE filesystem that hides files matching
   `.agentignore` rules from processes, giving developers fine-grained control
   over what AI coding agents can see.
 - Core FUSE operations: `lookup`, `getattr`, `readdir`, `open`, `read`, `write`,

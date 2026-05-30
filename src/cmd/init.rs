@@ -1,9 +1,9 @@
-//! `agentfs init` — Create example `.agentignore` and `.agentallow` files.
+//! `agentignore init` — Create example `.agentignore` and `.agentallow` files.
 
 use crate::cmd::common::{write_agentallow, write_agentignore};
 use std::path::PathBuf;
 
-/// Handle `agentfs init [folder]`.
+/// Handle `agentignore init [folder]`.
 ///
 /// Creates example `.agentignore` and `.agentallow` files in the specified
 /// directory (or the current directory if none is given).

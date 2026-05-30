@@ -9,8 +9,8 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=agentfs",
-                    "--package=agentfs",
+                    "--bin=agentignore",
+                    "--package=agentignore",
                     "--manifest-path=Cargo.toml"
                 ],
                 "filter": {

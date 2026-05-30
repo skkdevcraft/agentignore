@@ -22,7 +22,7 @@ cargo --version
 ## Project Layout
 
 ```
-agentfs/
+agentignore/
 ├── Cargo.toml          # Workspace or crate manifest
 ├── Cargo.lock          # Committed for binaries; excluded for libraries
 ├── src/

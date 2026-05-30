@@ -1,6 +1,6 @@
-//! `agentfs check` — Validate the `.agentignore` in the current directory.
+//! `agentignore check` — Validate the `.agentignore` in the current directory.
 
-/// Handle `agentfs check`.
+/// Handle `agentignore check`.
 ///
 /// Validates that `.agentignore` in the current directory has valid gitignore
 /// syntax. Exits with code 1 on errors.

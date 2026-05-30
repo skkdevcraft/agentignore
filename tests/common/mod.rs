@@ -1,4 +1,4 @@
-// Shared test helpers for agentfs integration tests.
+// Shared test helpers for agentignore integration tests.
 // Each test binary compiles this file independently, so not every function is used
 // in every binary. That is expected and harmless.
 #![allow(dead_code)]

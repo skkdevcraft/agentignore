@@ -1,4 +1,4 @@
-use agentfs::fs::AgentFS;
+use agentignore::fs::AgentFS;
 
 use fuser::{FileType, INodeNo};
 

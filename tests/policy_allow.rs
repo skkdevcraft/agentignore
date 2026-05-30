@@ -1,4 +1,4 @@
-use agentfs::fs::Policy;
+use agentignore::fs::Policy;
 
 mod common;
 

@@ -1,4 +1,4 @@
-//! Entry point for `agentfs` — a policy-filtered FUSE filesystem for AI agents.
+//! Entry point for `agentignore` — a policy-filtered FUSE filesystem for AI agents.
 //!
 //! This binary provides CLI subcommands to mount, unmount, check, init, and run
 //! commands against a filtered view of a filesystem, where files matching
@@ -10,7 +10,7 @@
 //! - **`init`** — Create example `.agentignore` and `.agentallow` files.
 //! - **`explain`** — Show whether a path is hidden and why.
 //! - **`mount`** — Mount a filtered view of `<source>` at `<mountpoint>`.
-//! - **`unmount`** — Unmount an existing AgentFS mountpoint.
+//! - **`unmount`** — Unmount an existing AgentIgnore mountpoint.
 //! - **`check`** — Validate the `.agentignore` in the current directory.
 
 use clap::Parser;
@@ -18,7 +18,7 @@ use cmd::args::{Args, Command};
 
 mod cmd;
 
-/// The `agentfs` binary entry point.
+/// The `agentignore` binary entry point.
 ///
 /// Initialises tracing (logging), parses CLI arguments via [`clap`], and
 /// dispatches to the appropriate subcommand handler.

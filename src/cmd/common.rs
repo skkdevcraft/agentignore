@@ -1,4 +1,4 @@
-//! Shared helper functions used by multiple agentfs subcommands.
+//! Shared helper functions used by multiple agentignore subcommands.
 
 use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
@@ -20,12 +20,12 @@ pub fn create_temp_mountpoint(source: &Path) -> PathBuf {
         .expect("source path must be valid UTF-8");
 
     // Try the simple name first
-    let dir = std::env::temp_dir().join(format!("agentfs/{}", base_name));
+    let dir = std::env::temp_dir().join(format!("agentignore/{}", base_name));
 
     // If it already exists, append the process ID
     if dir.exists() {
         let dir =
-            std::env::temp_dir().join(format!("agentfs/{}-{}", base_name, std::process::id()));
+            std::env::temp_dir().join(format!("agentignore/{}-{}", base_name, std::process::id()));
         std::fs::create_dir_all(&dir).expect("failed to create temp mountpoint");
         dir
     } else {
@@ -132,14 +132,14 @@ pub fn build_agentignore_template(dir: &Path) -> String {
 /// Build a template string for `.agentallow`.
 ///
 /// The `.agentallow` file defines a *process-based bypass* list: processes
-/// matching any entry here can see hidden files in the AgentFS mount.
+/// matching any entry here can see hidden files in the AgentIgnore mount.
 /// See the AllowList comment block in `fs.rs` for the full format spec.
 pub fn build_agentallow_template() -> String {
     "\
 # .agentallow — Process-based bypass rules
 # Lines starting with `#` are comments. Empty lines are ignored.
 #
-# This file defines which processes can BYPASS the hiding rules of AgentFS.
+# This file defines which processes can BYPASS the hiding rules of AgentIgnore.
 # Each entry specifies a process name, cmdline pattern, or binary path whose
 # filesystem requests will see hidden files.
 #

@@ -1,4 +1,4 @@
-use agentfs::fs::{CascadingAllowList, Policy};
+use agentignore::fs::{CascadingAllowList, Policy};
 
 use std::ffi::OsStr;
 use std::fs;
@@ -309,7 +309,7 @@ fn cascading_agentallow_with_agentfs_integration_lookup() {
     common::touch(&root.join("project").join("key.secret"));
     common::touch(&root.join("project").join("readme.md"));
 
-    let fs = agentfs::fs::AgentFS::new(root.clone());
+    let fs = agentignore::fs::AgentFS::new(root.clone());
 
     // .log files hidden (with no request context, no allow-bypass)
     assert!(

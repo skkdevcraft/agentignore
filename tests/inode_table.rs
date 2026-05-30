@@ -1,4 +1,4 @@
-use agentfs::fs::InodeTable;
+use agentignore::fs::InodeTable;
 
 use fuser::INodeNo;
 

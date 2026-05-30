@@ -1,4 +1,4 @@
-use agentfs::fs::HandleTable;
+use agentignore::fs::HandleTable;
 
 use fuser::FileHandle;
 

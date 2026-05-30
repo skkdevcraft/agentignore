@@ -1,12 +1,12 @@
-# AgentFS — Policy-Filtered Filesystem for AI Agents
+# AgentIgnore — Policy-Filtered Filesystem for AI Agents
 
-AgentFS is a [FUSE](https://en.wikipedia.org/wiki/Filesystem_in_Userspace) filesystem that provides a **filtered virtual view** of a real directory tree. Files and directories matching rules in a `.agentignore` file are completely hidden from processes interacting with the mounted filesystem — they don't appear in `ls`, `find`, glob expansion, or direct access.
+AgentIgnore is a [FUSE](https://en.wikipedia.org/wiki/Filesystem_in_Userspace) filesystem that provides a **filtered virtual view** of a real directory tree. Files and directories matching rules in a `.agentignore` file are completely hidden from processes interacting with the mounted filesystem — they don't appear in `ls`, `find`, glob expansion, or direct access.
 
 The primary use case is constraining autonomous AI/LLM agents that have shell access, so irrelevant files and directories (`node_modules/`, `.git/`, `target/`, `.env`, `secrets/`, etc.) genuinely appear non-existent to the agent while still allowing the agent to execute build and test tools.
 
 All visible files behave as a transparent passthrough: reads and writes go directly to the real filesystem.
 
-> **Note:** This is not a security boundary. AgentFS is designed to reduce LLM context by hiding irrelevant files, not to prevent a determined attacker from accessing them.
+> **Note:** This is not a security boundary. AgentIgnore is designed to reduce LLM context by hiding irrelevant files, not to prevent a determined attacker from accessing them.
 
 ## Table of Contents
 
@@ -32,15 +32,15 @@ All visible files behave as a transparent passthrough: reads and writes go direc
 cargo build --release
 
 # 3. Create example policy files in your project
-./target/release/agentfs init
+./target/release/agentignore init
 
 # 4. Start a shell inside the filtered view
-./target/release/agentfs run bash
+./target/release/agentignore run bash
 ```
 
 ## Prerequisites for Running
 
-AgentFS needs the **FUSE kernel module** and **libfuse3** on the host. Setup differs slightly across environments.
+AgentIgnore needs the **FUSE kernel module** and **libfuse3** on the host. Setup differs slightly across environments.
 
 ### Linux (bare-metal)
 
@@ -117,8 +117,8 @@ sudo modprobe fuse
 Creates `.agentignore` and `.agentallow` files in a directory:
 
 ```bash
-agentfs init              # current directory
-agentfs init /path/project
+agentignore init              # current directory
+agentignore init /path/project
 ```
 
 ### `run` — mount, execute, unmount
@@ -127,13 +127,13 @@ Mount a filtered view, run a command inside it, and unmount automatically:
 
 ```bash
 # Run bash inside a filtered view of the current directory
-agentfs run bash
+agentignore run bash
 
 # Run a specific tool with arguments
-agentfs run -- ls -la
+agentignore run -- ls -la
 
 # Run from a specific source directory
-agentfs run -source /home/user/project bash 
+agentignore run -source /home/user/project bash 
 ```
 
 ### `explain` — debug visibility
@@ -141,12 +141,12 @@ agentfs run -source /home/user/project bash
 Check whether a path would be hidden and why:
 
 ```bash
-agentfs explain .env
+agentignore explain .env
 # HIDDEN
 # canonical path: "/project/.env"
 # matched rule:   .env
 
-agentfs explain src/main.rs
+agentignore explain src/main.rs
 # VISIBLE
 # canonical path: "/project/src/main.rs"
 ```

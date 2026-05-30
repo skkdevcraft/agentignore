@@ -1,4 +1,4 @@
-//! `agentfs mount` — Mount a filtered view of a source directory at a mountpoint.
+//! `agentignore mount` — Mount a filtered view of a source directory at a mountpoint.
 //!
 //! When `--no-dashboard` is not given, displays a live terminal dashboard that
 //! refreshes every 500ms showing operation throughput, cumulative totals,
@@ -8,13 +8,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use agentfs::fs::AgentFS;
-use agentfs::fs::stats::{AccessKind, OpType, StatsCollector};
+use agentignore::fs::AgentFS;
+use agentignore::fs::stats::{AccessKind, OpType, StatsCollector};
 
 /// Dashboard refresh interval in milliseconds.
 const REFRESH_MS: u64 = 500;
 
-/// Handle `agentfs mount <source> <mountpoint>`.
+/// Handle `agentignore mount <source> <mountpoint>`.
 pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool) {
     let source = source.canonicalize().expect("source path must exist");
 
@@ -70,7 +70,7 @@ pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool) {
 
     if no_dashboard {
         // ── No-dashboard mode ──────────────────────────────────────────────
-        println!("Mounting AgentFS: {:?} → {:?}", source, mountpoint);
+        println!("Mounting AgentIgnore: {:?} → {:?}", source, mountpoint);
         loop {
             std::thread::sleep(std::time::Duration::from_millis(100));
             if shutdown.load(Ordering::SeqCst) {
@@ -83,7 +83,7 @@ pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool) {
         }
     } else {
         // ── Dashboard mode ────────────────────────────────────────────────
-        println!("Mounting AgentFS: {:?} → {:?}", source, mountpoint);
+        println!("Mounting AgentIgnore: {:?} → {:?}", source, mountpoint);
         println!("Dashboard active — Ctrl+C to unmount\n");
 
         let stats = stats.expect("stats should be Some in dashboard mode");
@@ -133,7 +133,7 @@ pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool) {
 
 // ── Dashboard rendering ─────────────────────────────────────────────────────
 
-use agentfs::fs::stats::Snapshot;
+use agentignore::fs::stats::Snapshot;
 use std::fmt::Write;
 
 /// Render the full dashboard to stdout using ANSI escape codes.
@@ -147,7 +147,7 @@ fn render_dashboard(snap: &Snapshot) {
     let uptime = format_uptime(snap.uptime);
     let _ = writeln!(
         out,
-        "\x1b[36m┌─ agentfs mount ─────────────────── uptime: {uptime} ───────────┐\x1b[0m"
+        "\x1b[36m┌─ agentignore mount ─────────────── uptime: {uptime} ───────────┐\x1b[0m"
     );
 
     // ── OPS table ──────────────────────────────────────────────────────────

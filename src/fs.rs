@@ -29,7 +29,7 @@ use tracing::{debug, warn};
 const TTL: Duration = Duration::from_secs(1);
 
 // ──────────────────────────────────────────────
-//  AgentFS
+//  AgentIgnore
 // ──────────────────────────────────────────────
 
 pub struct AgentFS {
@@ -46,7 +46,7 @@ impl AgentFS {
         Self::with_stats(root, None)
     }
 
-    /// Create `AgentFS` with an optional stats collector.
+    /// Create `AgentIgnore` with an optional stats collector.
     pub fn with_stats(root: PathBuf, stats: Option<Arc<StatsCollector>>) -> Self {
         Self {
             guard: PolicyFreshnessGuard::new(&root),

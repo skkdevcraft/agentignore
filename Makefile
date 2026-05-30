@@ -1,11 +1,11 @@
 .PHONY: dev mount umount prepare publish pre-publish check clean
 
 dev:
-	mkdir -p /tmp/agentfs
-	cargo run -- mount ./test-project/ /tmp/agentfs
+	mkdir -p /tmp/agentignore
+	cargo run -- mount ./test-project/ /tmp/agentignore
 
 umount:
-	fusermount3 -u /tmp/agentfs
+	fusermount3 -u /tmp/agentignore
 
 # Publishing preparation
 prepare: check pre-publish
@@ -36,7 +36,7 @@ publish: prepare
 
 clean:
 	cargo clean
-	@if [ -d "/tmp/agentfs" ]; then \
+	@if [ -d "/tmp/agentignore" ]; then \
 		echo "Cleaning up mount point..."; \
-		fusermount3 -u /tmp/agentfs 2>/dev/null || true; \
+		fusermount3 -u /tmp/agentignore 2>/dev/null || true; \
 	fi

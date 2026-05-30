@@ -1,9 +1,9 @@
-//! `agentfs explain` — Show whether a path is hidden and why.
+//! `agentignore explain` — Show whether a path is hidden and why.
 
-use agentfs::fs::AgentFS;
+use agentignore::fs::AgentFS;
 use std::path::PathBuf;
 
-/// Handle `agentfs explain <path>`.
+/// Handle `agentignore explain <path>`.
 ///
 /// Prints whether the given path is VISIBLE or HIDDEN, and if hidden,
 /// which rule matched.
@@ -15,8 +15,8 @@ pub fn explain(path: PathBuf) {
         root.join(&path)
     };
     let canonical = abs.canonicalize().unwrap_or(abs);
-    let agentfs = AgentFS::new(root.clone());
-    if agentfs.is_hidden(&canonical) {
+    let agentignore = AgentFS::new(root.clone());
+    if agentignore.is_hidden(&canonical) {
         let mut builder = ignore::gitignore::GitignoreBuilder::new(&root);
         let _ = builder.add(root.join(".agentignore"));
         if let Ok(matcher) = builder.build() {

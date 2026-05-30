@@ -1,12 +1,12 @@
-# PRD: Live Dashboard for `agentfs mount`
+# PRD: Live Dashboard for `agentignore mount`
 
 ## Problem Statement
 
-Running `agentfs mount <source> <mountpoint>` currently blocks forever with no feedback except an initial "Mounting..." line. The user must hit Ctrl+C to see any indication that the mount is still alive. There is no way to monitor which files are being accessed, which processes are interacting with the mount, how the filesystem is performing, or whether policy denials are occurring. This makes it hard to debug policy rules, observe agent behaviour, or gain confidence that the mount is working correctly.
+Running `agentignore mount <source> <mountpoint>` currently blocks forever with no feedback except an initial "Mounting..." line. The user must hit Ctrl+C to see any indication that the mount is still alive. There is no way to monitor which files are being accessed, which processes are interacting with the mount, how the filesystem is performing, or whether policy denials are occurring. This makes it hard to debug policy rules, observe agent behaviour, or gain confidence that the mount is working correctly.
 
 ## Solution
 
-The `agentfs mount` command shall display a live terminal dashboard while the filesystem is mounted, showing:
+The `agentignore mount` command shall display a live terminal dashboard while the filesystem is mounted, showing:
 
 - Real-time operation throughput (ops/second per FUSE operation type)
 - Cumulative operation totals since mount
@@ -18,16 +18,16 @@ The dashboard refreshes every 500ms and exits cleanly on Ctrl+C or external unmo
 
 ## User Stories
 
-1. As an agentfs user, I want to see how many FUSE operations per second are happening, so that I can gauge filesystem activity at a glance.
-2. As an agentfs user, I want to see cumulative totals for each operation type (lookup, getattr, read, write, open, etc.), so that I can understand long-term access patterns.
-3. As an agentfs user, I want to see the last 10 unique files that were accessed, so that I can identify which paths the agent is touching.
-4. As an agentfs user, I want each recent path entry to show how many times it has been accessed, so that I can spot hot paths.
-5. As an agentfs user, I want each recent path entry to show the process name that accessed it, so that I can correlate activity with the calling process.
-6. As an agentfs user, I want allowed accesses shown in green, denied (hidden) accesses shown in red, and bypassed (`.agentallow`-allowed) accesses shown in yellow, so that I can immediately spot policy hits.
-7. As an agentfs user, I want to see the number of currently open file handles, so that I can detect leaked handles or long-lived file sessions.
-8. As an agentfs user, I want the dashboard to refresh at a configurable interval (default 500ms), so that I can trade off refresh smoothness against CPU usage.
-9. As an agentfs user, I want the dashboard to return to the shell cleanly when I press Ctrl+C, without leaving the terminal in a broken state.
-10. As an agentfs user, I want the dashboard to detect external unmounts (e.g. `fusermount -u`) and exit gracefully, so that unmounting from another terminal works as expected.
+1. As an agentignore user, I want to see how many FUSE operations per second are happening, so that I can gauge filesystem activity at a glance.
+2. As an agentignore user, I want to see cumulative totals for each operation type (lookup, getattr, read, write, open, etc.), so that I can understand long-term access patterns.
+3. As an agentignore user, I want to see the last 10 unique files that were accessed, so that I can identify which paths the agent is touching.
+4. As an agentignore user, I want each recent path entry to show how many times it has been accessed, so that I can spot hot paths.
+5. As an agentignore user, I want each recent path entry to show the process name that accessed it, so that I can correlate activity with the calling process.
+6. As an agentignore user, I want allowed accesses shown in green, denied (hidden) accesses shown in red, and bypassed (`.agentallow`-allowed) accesses shown in yellow, so that I can immediately spot policy hits.
+7. As an agentignore user, I want to see the number of currently open file handles, so that I can detect leaked handles or long-lived file sessions.
+8. As an agentignore user, I want the dashboard to refresh at a configurable interval (default 500ms), so that I can trade off refresh smoothness against CPU usage.
+9. As an agentignore user, I want the dashboard to return to the shell cleanly when I press Ctrl+C, without leaving the terminal in a broken state.
+10. As an agentignore user, I want the dashboard to detect external unmounts (e.g. `fusermount -u`) and exit gracefully, so that unmounting from another terminal works as expected.
 
 ## Implementation Decisions
 
@@ -37,7 +37,7 @@ No new external dependencies. The dashboard uses standard ANSI escape codes for 
 
 ### Design Principle: Stats-Only-When-Mounted
 
-Stats collection is **only active when the mount command is running with the dashboard enabled**. When `agentfs mount` is called without the dashboard (e.g. `--no-dashboard` flag), or when `agentfs run` or any other command uses `AgentFS`, the filesystem operates with zero stats overhead — no atomic counters, no mutex acquisitions, no memory allocated for path tracking.
+Stats collection is **only active when the mount command is running with the dashboard enabled**. When `agentignore mount` is called without the dashboard (e.g. `--no-dashboard` flag), or when `agentignore run` or any other command uses `AgentFS`, the filesystem operates with zero stats overhead — no atomic counters, no mutex acquisitions, no memory allocated for path tracking.
 
 This is achieved by making the stats collector **optional** on `AgentFS`. Every FUSE trait method checks a simple `Option<Arc<StatsCollector>>` before recording anything — when `None`, the call is a no-op and compiles to a single branch.
 
@@ -102,7 +102,7 @@ Key behaviours:
 
 ### CLI Flag: `--no-dashboard`
 
-A new optional flag `--no-dashboard` / `-D` is added to `agentfs mount`. When provided:
+A new optional flag `--no-dashboard` / `-D` is added to `agentignore mount`. When provided:
 
 - No `StatsCollector` is created.
 - `AgentFS` is constructed with `stats: None`.
@@ -110,10 +110,10 @@ A new optional flag `--no-dashboard` / `-D` is added to `agentfs mount`. When pr
 - Output is minimal (the original "Mounting..." line, then "Unmounted.").
 
 ```console
-$ agentfs mount /project /mnt/agent
+$ agentignore mount /project /mnt/agent
 # (dashboard shown)
 
-$ agentfs mount --no-dashboard /project /mnt/agent
+$ agentignore mount --no-dashboard /project /mnt/agent
 Mounting...
 ^C
 Unmounted.
@@ -178,7 +178,7 @@ const REFRESH_MS: u64 = 500;
 ### Layout (ASCII wireframe)
 
 ```
-┌─ agentfs mount ─────────────────── uptime: 00:12:37 ───────────┐
+┌─ agentignore mount ─────────────────── uptime: 00:12:37 ───────────┐
 │                                                                  │
 │  OPS/SEC              TOTAL OPS                                 │
 │  LOOKUP      47 ████  14,231                                    │
@@ -260,18 +260,18 @@ Bar graph width is proportional to the tick ops count relative to the maximum ac
 ## Out of Scope
 
 - A full TUI framework (ratatui, crossterm, etc.) — pure ANSI is sufficient
-- The `agentfs run` command — it will continue to use its existing ephemeral mount flow without the dashboard and without a StatsCollector
+- The `agentignore run` command — it will continue to use its existing ephemeral mount flow without the dashboard and without a StatsCollector
 - Persistent logging of stats to disk
 - Network-accessible stats endpoint (HTTP/Unix socket)
 - Configurable which operation types to display
 - Per-process breakdown of stats
 - Database/file-backed history beyond the last-10 recent paths
 - Mouse interaction in the dashboard
-- Stats collection for non-mount commands (`agentfs run`, `agentfs ls`, etc.) — these pass `None` for the stats collector
+- Stats collection for non-mount commands (`agentignore run`, `agentignore ls`, etc.) — these pass `None` for the stats collector
 
 ## Further Notes
 
 - The `REFRESH_MS` constant is deliberately a `const u64` at the top of `src/cmd/mount.rs` for discoverability. Future work could expose it as a CLI flag.
 - The `AccessKind::Bypassed` variant covers the case where a path is matched by `.agentignore` but the requesting process is on the `.agentallow` list. This is technically an "allowed" access, but colouring it differently from both "allowed" and "denied" lets the user see that `.agentallow` is working.
-- The existing `setup_signal_handler` in `common.rs` calls `std::process::exit(1)` — the new mount flow replaces this with an `AtomicBool`-based graceful shutdown. The function may still be used by `agentfs run` and should remain unchanged.
+- The existing `setup_signal_handler` in `common.rs` calls `std::process::exit(1)` — the new mount flow replaces this with an `AtomicBool`-based graceful shutdown. The function may still be used by `agentignore run` and should remain unchanged.
 - The dashboard renders to stdout. All tracing/log output (via `tracing`) continues to stderr and is not captured or suppressed by the dashboard.

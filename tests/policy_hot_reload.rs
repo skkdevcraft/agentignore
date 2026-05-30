@@ -1,4 +1,4 @@
-use agentfs::fs::{AgentFS, Policy};
+use agentignore::fs::{AgentFS, Policy};
 
 use fuser::INodeNo;
 

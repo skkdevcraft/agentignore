@@ -26,7 +26,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// Encapsulates the read-check / write-reload protocol for policy freshness.
 ///
 /// Owns the `RwLock<Policy>` and `RwLock<InodeTable>` that were previously
-/// stored directly on `AgentFS`.  The guard provides read and write accessor
+/// stored directly on `AgentIgnore`.  The guard provides read and write accessor
 /// methods so callers can still interact with the policy and inode table
 /// through the usual API.
 pub struct PolicyFreshnessGuard {

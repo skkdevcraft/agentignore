@@ -1,4 +1,4 @@
-//! Live stats collector for the AgentFS mount dashboard.
+//! Live stats collector for the AgentIgnore mount dashboard.
 //!
 //! Collects real-time operation counters, path access tracking, and handle
 //! accounting.  The collector is purely additive — no stats are ever

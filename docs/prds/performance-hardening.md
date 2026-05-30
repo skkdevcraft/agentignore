@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-As an agentfs user, mounts become effectively single-threaded under concurrent FUSE traffic. A `make -j16` inside the mount or a parallel `find` crawler stalls because **every filesystem operation acquires the policy write-lock**, even when no configuration files have changed on disk. Additionally, redundant filesystem syscalls (re-canonicalizing already-canonical paths, re-reading `/proc/<pid>/stat` for every new path entry) and unnecessary `Mutex` contention in read-heavy data structures waste CPU and amplify latency. The filesystem is functionally correct but architecturally hostile to concurrency and high-throughput workloads.
+As an agentignore user, mounts become effectively single-threaded under concurrent FUSE traffic. A `make -j16` inside the mount or a parallel `find` crawler stalls because **every filesystem operation acquires the policy write-lock**, even when no configuration files have changed on disk. Additionally, redundant filesystem syscalls (re-canonicalizing already-canonical paths, re-reading `/proc/<pid>/stat` for every new path entry) and unnecessary `Mutex` contention in read-heavy data structures waste CPU and amplify latency. The filesystem is functionally correct but architecturally hostile to concurrency and high-throughput workloads.
 
 ## Solution
 
@@ -10,25 +10,25 @@ A targeted performance pass over the FUSE call chain that eliminates serialisati
 
 ## User Stories
 
-1. As an agentfs user running a build inside the mount (`make -j16`), I want concurrent FUSE operations to proceed in parallel without serialising on the policy lock, so that build throughput matches the backing filesystem.
+1. As an agentignore user running a build inside the mount (`make -j16`), I want concurrent FUSE operations to proceed in parallel without serialising on the policy lock, so that build throughput matches the backing filesystem.
 
-2. As an agentfs user running a parallel crawler (`find . -type f | xargs -P 8 cat`), I want lookups and getattrs to be served concurrently, so that crawler wall-clock time is not dominated by lock contention.
+2. As an agentignore user running a parallel crawler (`find . -type f | xargs -P 8 cat`), I want lookups and getattrs to be served concurrently, so that crawler wall-clock time is not dominated by lock contention.
 
-3. As an agentfs user, I want `ensure_policy_fresh()` to be a near-zero-cost operation when no config files have changed, so that 99.999% of FUSE ops skip the policy reload hot path entirely.
+3. As an agentignore user, I want `ensure_policy_fresh()` to be a near-zero-cost operation when no config files have changed, so that 99.999% of FUSE ops skip the policy reload hot path entirely.
 
-4. As an agentfs user, I want the dashboard (when enabled) to collect stats without adding a `canonicalize()` syscall on top of the one already performed in the FUSE operation, so that stats overhead is minimized.
+4. As an agentignore user, I want the dashboard (when enabled) to collect stats without adding a `canonicalize()` syscall on top of the one already performed in the FUSE operation, so that stats overhead is minimized.
 
-5. As an agentfs user, I want the `readdir` path to fast-reject children that fall outside the mount root *before* calling `canonicalize()`, so that directories with many entries don't incur per-child syscall costs unnecessarily.
+5. As an agentignore user, I want the `readdir` path to fast-reject children that fall outside the mount root *before* calling `canonicalize()`, so that directories with many entries don't incur per-child syscall costs unnecessarily.
 
-6. As an agentfs user, I want process-name lookups for the recent-paths dashboard to be cached so that the same PID touching many files in quick succession doesn't re-read `/proc/<pid>/stat` each time.
+6. As an agentignore user, I want process-name lookups for the recent-paths dashboard to be cached so that the same PID touching many files in quick succession doesn't re-read `/proc/<pid>/stat` each time.
 
-7. As an agentfs user, I want the inode table to serve concurrent read-only lookups without blocking each other, so that parallel `stat` or `read` calls don't contend on the inode lock.
+7. As an agentignore user, I want the inode table to serve concurrent read-only lookups without blocking each other, so that parallel `stat` or `read` calls don't contend on the inode lock.
 
-8. As an agentfs user, I want the policy matcher cache to serve concurrent `is_hidden()` evaluations without writers blocking readers, so that the common-case hidden-file check is fully parallel.
+8. As an agentignore user, I want the policy matcher cache to serve concurrent `is_hidden()` evaluations without writers blocking readers, so that the common-case hidden-file check is fully parallel.
 
-9. As an agentfs user, I want the stats collector's recent-paths update to avoid unnecessary cloning when a path is re-hit, so that the dashboard hot path is allocation-efficient.
+9. As an agentignore user, I want the stats collector's recent-paths update to avoid unnecessary cloning when a path is re-hit, so that the dashboard hot path is allocation-efficient.
 
-10. As an agentfs maintainer, I want a dedicated `PolicyFreshnessGuard` module that encapsulates the read-check-then-write-reload split, so that the reload protocol is testable in isolation and the FUSE trait implementation stays clean.
+10. As an agentignore maintainer, I want a dedicated `PolicyFreshnessGuard` module that encapsulates the read-check-then-write-reload split, so that the reload protocol is testable in isolation and the FUSE trait implementation stays clean.
 
 ## Implementation Decisions
 
@@ -61,7 +61,7 @@ This is the counterpart to `check_and_reload()`. If `has_config_changed()` retur
 
 ### `InodeTable` Behind `RwLock`
 
-Change `AgentFS::inodes` from `Mutex<InodeTable>` to `RwLock<InodeTable>`. The `path()` method is read-heavy (every `getattr`, `read`, `write`, `lookup`); only `get_or_insert`, `evict_prefix`, and `parent_ino` need write access. `readdir` becomes a mixed case: `parent_ino` is read, but `get_or_insert` for each visible child is write.
+Change `AgentIgnore::inodes` from `Mutex<InodeTable>` to `RwLock<InodeTable>`. The `path()` method is read-heavy (every `getattr`, `read`, `write`, `lookup`); only `get_or_insert`, `evict_prefix`, and `parent_ino` need write access. `readdir` becomes a mixed case: `parent_ino` is read, but `get_or_insert` for each visible child is write.
 
 **Decision:** Keep individual `get_or_insert` calls under write lock in `readdir`. The cost of upgrading a read lock to write is higher than just grabbing write. For mutating operations (`create`, `mkdir`, `link`, `symlink`), the write lock is held only around `get_or_insert`, not the entire method body.
 
