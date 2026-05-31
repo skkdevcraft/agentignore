@@ -15,7 +15,7 @@ use agentignore::fs::stats::{AccessKind, OpType, StatsCollector};
 const REFRESH_MS: u64 = 500;
 
 /// Handle `agentignore mount <source> <mountpoint>`.
-pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool) {
+pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool, show_config_files: bool) {
     let source = source.canonicalize().expect("source path must exist");
 
     // Create mountpoint if it doesn't exist
@@ -36,7 +36,7 @@ pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool) {
         Some(s)
     };
 
-    let fs = AgentFS::with_stats(source.clone(), stats.clone());
+    let fs = AgentFS::with_config(source.clone(), stats.clone(), show_config_files);
 
     // Shutdown flag for graceful Ctrl+C handling
     let shutdown = Arc::new(AtomicBool::new(false));

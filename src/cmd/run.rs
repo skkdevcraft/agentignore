@@ -5,13 +5,14 @@ use agentignore::fs::AgentFS;
 use std::path::PathBuf;
 use std::process::Command as ProcessCommand;
 
-/// Handle `agentignore run [command...]` with an optional `--source <path>`.
+/// Handle `agentignore run [command...]` with an optional `--source <path>`
+/// and `--show-config-files`.
 ///
 /// Sets up a temporary mountpoint, spawns a command inside it, then unmounts
 /// and exits with the command's exit code.
 ///
 /// The first element of `command` is the program to run; the rest are its arguments.
-pub fn run(command: Vec<String>, source: Option<PathBuf>) {
+pub fn run(command: Vec<String>, source: Option<PathBuf>, show_config_files: bool) {
     let source = source.unwrap_or_else(|| std::env::current_dir().unwrap());
     let source = source.canonicalize().expect("source path must exist");
     let mountpoint = create_temp_mountpoint(&source);
@@ -22,7 +23,7 @@ pub fn run(command: Vec<String>, source: Option<PathBuf>) {
     println!("Mounting {:?} → {:?}", source, mountpoint);
 
     // Mount in a separate thread since fuser::mount2 blocks
-    let fs = AgentFS::with_stats(source.clone(), None);
+    let fs = AgentFS::with_config(source.clone(), None, show_config_files);
     let mp_clone = mountpoint.clone();
     let mount_handle = std::thread::spawn(move || {
         fuser::mount2(fs, &mp_clone, &fuser::Config::default()).expect("mount failed");

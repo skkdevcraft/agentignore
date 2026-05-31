@@ -39,6 +39,9 @@ pub struct AgentFS {
     guard: PolicyFreshnessGuard,
     handles: Mutex<HandleTable>,
     stats: Option<Arc<StatsCollector>>,
+    /// When true, .agentignore and .agentallow files are NOT hidden
+    /// (overrides the hardcoded rule in `Policy::is_hidden`).
+    show_config_files: bool,
 }
 
 impl AgentFS {
@@ -53,6 +56,23 @@ impl AgentFS {
             handles: Mutex::new(HandleTable::new()),
             root,
             stats,
+            show_config_files: false,
+        }
+    }
+
+    /// Create `AgentIgnore` with an optional stats collector and config
+    /// file visibility setting.
+    pub fn with_config(
+        root: PathBuf,
+        stats: Option<Arc<StatsCollector>>,
+        show_config_files: bool,
+    ) -> Self {
+        Self {
+            guard: PolicyFreshnessGuard::new(&root),
+            handles: Mutex::new(HandleTable::new()),
+            root,
+            stats,
+            show_config_files,
         }
     }
 
@@ -158,7 +178,20 @@ impl AgentFS {
 
     /// Check if a path is hidden, considering request context and cascading allow lists.
     /// Also records stats for denials/bypasses.
+    ///
+    /// If `show_config_files` is true, `.agentignore` and `.agentallow` files
+    /// are never hidden, overriding the hardcoded rule in `Policy::is_hidden`.
     pub fn is_hidden_for_request(&self, path: &Path, req: Option<&Request>) -> bool {
+        // Fast path: if show_config_files is set and this is a config file,
+        // skip the policy read entirely, no need to acquire any lock for
+        // just the file-name check.
+        if self.show_config_files
+            && let Some(name) = path.file_name()
+            && (name == ".agentignore" || name == ".agentallow")
+        {
+            return false;
+        }
+
         let policy = self.guard.policy_read();
         if let Some(req) = req {
             // Bypass check first (cheaper than gitignore matching)

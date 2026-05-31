@@ -28,12 +28,17 @@ fn main() {
     let args = Args::parse();
 
     match args.command {
-        Command::Run { command, source } => cmd::run::run(command, source),
+        Command::Run {
+            command,
+            source,
+            show_config_files,
+        } => cmd::run::run(command, source, show_config_files),
         Command::Mount {
             source,
             mountpoint,
             no_dashboard,
-        } => cmd::mount::mount(source, mountpoint, no_dashboard),
+            show_config_files,
+        } => cmd::mount::mount(source, mountpoint, no_dashboard, show_config_files),
         Command::Unmount { mountpoint } => cmd::unmount::unmount(mountpoint),
         Command::Init { folder } => cmd::init::init(folder),
         Command::Check => cmd::check::check(),

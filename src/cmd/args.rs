@@ -25,6 +25,9 @@ pub enum Command {
         /// Optional source directory to filter (defaults to current directory)
         #[arg(short = 's', long = "source")]
         source: Option<PathBuf>,
+        /// Show .agentignore and .agentallow files in the filtered view
+        #[arg(short = 'c', long = "show-config-files", default_value_t = false)]
+        show_config_files: bool,
     },
     /// Create example .agentignore and .agentallow files in the specified directory
     Init {
@@ -40,6 +43,9 @@ pub enum Command {
         /// Disable the live dashboard (no stats collection, no rendering)
         #[arg(long = "no-dashboard", short = 'D', default_value_t = false)]
         no_dashboard: bool,
+        /// Show .agentignore and .agentallow files in the filtered view
+        #[arg(short = 'c', long = "show-config-files", default_value_t = false)]
+        show_config_files: bool,
     },
     /// Unmount an AgentIgnore mountpoint
     Unmount { mountpoint: PathBuf },
