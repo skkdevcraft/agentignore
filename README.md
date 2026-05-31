@@ -1,6 +1,10 @@
-# AgentIgnore — Policy-Filtered Filesystem for AI Agents
+# agentignore
 
-AgentIgnore is a [FUSE](https://en.wikipedia.org/wiki/Filesystem_in_Userspace) filesystem that provides a **filtered virtual view** of a real directory tree. Files and directories matching rules in a `.agentignore` file are completely hidden from processes interacting with the mounted filesystem — they don't appear in `ls`, `find`, glob expansion, or direct access.
+[![Crates.io](https://img.shields.io/crates/v/agentignore)](https://crates.io/crates/agentignore)
+
+Policy-Filtered Filesystem for AI Agents.
+
+**agentignore** is a [FUSE](https://en.wikipedia.org/wiki/Filesystem_in_Userspace) filesystem that provides a **filtered virtual view** of a real directory tree. Files and directories matching rules in a `.agentignore` file are completely hidden from processes interacting with the mounted filesystem — they don't appear in `ls`, `find`, glob expansion, or direct access.
 
 The primary use case is constraining autonomous AI/LLM agents that have shell access, so irrelevant files and directories (`node_modules/`, `.git/`, `target/`, `.env`, `secrets/`, etc.) genuinely appear non-existent to the agent while still allowing the agent to execute build and test tools.
 
