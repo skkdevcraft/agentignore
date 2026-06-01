@@ -4,11 +4,13 @@
 //! refreshes every 500ms showing operation throughput, cumulative totals,
 //! recently accessed files, and open handle counts.
 
+use std::fmt::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use agentignore::fs::AgentFS;
+use agentignore::fs::stats::Snapshot;
 use agentignore::fs::stats::{AccessKind, OpType, StatsCollector};
 
 /// Dashboard refresh interval in milliseconds.
@@ -84,36 +86,13 @@ pub fn mount(source: PathBuf, mountpoint: PathBuf, show_dashboard: bool, show_co
 
             // Print paths that appeared since the last check
             for ps in snap.recent_paths.iter() {
-                let path_str = ps.path.display().to_string();
-                let display_path = format!("{:<40}", path_str);
-                // Colour based on access kind
-                let (colour, access_label) = match ps.access {
-                    AccessKind::Allowed => ("\x1b[32m", ""),
-                    AccessKind::Denied => ("\x1b[31m", " DENIED"),
-                    AccessKind::Bypassed => ("\x1b[33m", " BYPASS"),
-                };
+                let colour = access_colour(ps.access);
+                let op_letter = op_letter(ps.last_op);
+                let suffix = format_hit_suffix(ps.hit_count, ps.access, ps.last_op);
+                let display_path = format_path_display(&ps.path, 40);
+                let proc_name = format_truncated_name(&ps.process_name, 16);
 
-                let op_letter = match ps.last_op {
-                    OpType::Read => "R",
-                    OpType::Write => "W",
-                    _ => "A",
-                };
-
-                let proc_name = if ps.process_name.len() > 16 {
-                    &ps.process_name[..13]
-                } else {
-                    &ps.process_name
-                };
-
-                let suffix = if matches!(ps.access, AccessKind::Denied | AccessKind::Bypassed) {
-                    format!("{}{access_label}", ps.hit_count)
-                } else if ps.last_op == OpType::Write {
-                    format!("{} W", ps.hit_count)
-                } else {
-                    format!("{} R", ps.hit_count)
-                };
-
-                println!("{colour}{op_letter} {suffix} {proc_name:<14} {display_path} \x1b[0m");
+                println!("{colour}{op_letter} {suffix} {proc_name:<14} {display_path}{ANSI_RESET}");
             }
 
             if shutdown.load(Ordering::SeqCst) {
@@ -176,9 +155,6 @@ pub fn mount(source: PathBuf, mountpoint: PathBuf, show_dashboard: bool, show_co
 
 // ── Dashboard rendering ─────────────────────────────────────────────────────
 
-use agentignore::fs::stats::Snapshot;
-use std::fmt::Write;
-
 /// Render the full dashboard to stdout using ANSI escape codes.
 fn render_dashboard(snap: &Snapshot) {
     let mut out = String::new();
@@ -190,11 +166,14 @@ fn render_dashboard(snap: &Snapshot) {
     let uptime = format_uptime(snap.uptime);
     let _ = writeln!(
         out,
-        "\x1b[36m┌─ agentignore mount ─────────────── uptime: {uptime} ───────────┐\x1b[0m"
+        "{ANSI_CYAN}┌─ agentignore mount ─────────────── uptime: {uptime} ───────────┐{ANSI_RESET}"
     );
 
     // ── OPS table ──────────────────────────────────────────────────────────
-    let _ = writeln!(out, "  \x1b[36mOPS/SEC              TOTAL OPS\x1b[0m");
+    let _ = writeln!(
+        out,
+        "  {ANSI_CYAN}OPS/SEC              TOTAL OPS{ANSI_RESET}"
+    );
 
     // Find max tick count for bar scaling
     let max_tick = snap.ops.values().map(|&(_, t)| t).max().unwrap_or(1).max(1);
@@ -217,51 +196,29 @@ fn render_dashboard(snap: &Snapshot) {
 
         let _ = writeln!(
             out,
-            "  {label:<10} {display_tick} \x1b[36m{bar}\x1b[0m  {display_total}"
+            "  {label:<10} {display_tick} {ANSI_CYAN}{bar}{ANSI_RESET}  {display_total}"
         );
     }
 
     // ── Recent files ──────────────────────────────────────────────────────
     let _ = writeln!(
         out,
-        "  \x1b[36m──── LAST ACCESSED FILES \x1b[0m───────────── \x1b[36mOpen handles: {}\x1b[0m ──────",
+        "  {ANSI_CYAN}──── LAST ACCESSED FILES {ANSI_RESET}───────────── {ANSI_CYAN}Open handles: {}{ANSI_RESET} ──────",
         snap.open_handles,
     );
 
     if snap.recent_paths.is_empty() {
         for i in 1..=10 {
-            let _ = writeln!(out, "{i:>2}.  \x1b[90m(idle)\x1b[0m");
+            let _ = writeln!(out, "{i:>2}.  {ANSI_GRAY}(idle){ANSI_RESET}");
         }
     } else {
         for (i, ps) in snap.recent_paths.iter().enumerate() {
             let num = i + 1;
-            let path_str = ps.path.display().to_string();
-            // Trim long paths
-            let display_path = if path_str.len() > 40 {
-                let (_, tail) = path_str.split_at(path_str.len().saturating_sub(37));
-                format!("...{tail}")
-            } else {
-                format!("{:<40}", path_str)
-            };
-
-            // Colour based on access kind
-            let (colour, access_label) = match ps.access {
-                AccessKind::Allowed => ("\x1b[32m", ""),
-                AccessKind::Denied => ("\x1b[31m", " DENIED"),
-                AccessKind::Bypassed => ("\x1b[33m", " BYPASS"),
-            };
-
-            let op_letter = match ps.last_op {
-                OpType::Read => "R",
-                OpType::Write => "W",
-                _ => "A",
-            };
-
-            let proc_name = if ps.process_name.len() > 16 {
-                &ps.process_name[..13]
-            } else {
-                &ps.process_name
-            };
+            let colour = access_colour(ps.access);
+            let op_letter = op_letter(ps.last_op);
+            let display_path = format_path_display(&ps.path, 40);
+            let proc_name = format_truncated_name(&ps.process_name, 16);
+            let suffix = format_hit_suffix(ps.hit_count, ps.access, ps.last_op);
 
             // Hit bar (8 chars proportional to hit_count, relative to max hits)
             let max_hits = snap
@@ -271,20 +228,11 @@ fn render_dashboard(snap: &Snapshot) {
                 .max()
                 .unwrap_or(1)
                 .max(1);
-            let hit_bar_width = ((ps.hit_count as f64 / max_hits as f64) * 8.0).round() as usize;
-            let hit_bar = "\u{2588}".repeat(hit_bar_width);
-
-            let suffix = if matches!(ps.access, AccessKind::Denied | AccessKind::Bypassed) {
-                format!("{}(s){access_label}", ps.hit_count)
-            } else if ps.last_op == OpType::Write {
-                format!("{} write(s)", ps.hit_count)
-            } else {
-                format!("{} read(s)", ps.hit_count)
-            };
+            let hit_bar = bar_chart(ps.hit_count as u64, max_hits as u64, 8);
 
             let _ = writeln!(
                 out,
-                "{num:>2}. {colour}{op_letter}  {display_path}  {proc_name:<14} {hit_bar}  {suffix}\x1b[0m"
+                "{num:>2}. {colour}{op_letter}  {display_path}  {proc_name:<14} {hit_bar}  {suffix}{ANSI_RESET}"
             );
         }
     }
@@ -292,12 +240,12 @@ fn render_dashboard(snap: &Snapshot) {
     // ── Footer ─────────────────────────────────────────────────────────────
     let _ = writeln!(
         out,
-        "  \x1b[36mMounted: {:?} → {:?}    Ctrl+C to unmount\x1b[0m",
+        "  {ANSI_CYAN}Mounted: {:?} → {:?}    Ctrl+C to unmount{ANSI_RESET}",
         snap.source, snap.mountpoint,
     );
     let _ = writeln!(
         out,
-        "\x1b[36m└──────────────────────────────────────────────────────────────────┘\x1b[0m"
+        "{ANSI_CYAN}└──────────────────────────────────────────────────────────────────┘{ANSI_RESET}"
     );
 
     // Write to stdout and flush
@@ -327,4 +275,85 @@ fn format_thousands(n: u64) -> String {
         result.push(ch);
     }
     result
+}
+
+// ── ANSI colour constants ───────────────────────────────────────────────────
+
+const ANSI_RESET: &str = "\x1b[0m";
+const ANSI_GREEN: &str = "\x1b[32m";
+const ANSI_RED: &str = "\x1b[31m";
+const ANSI_YELLOW: &str = "\x1b[33m";
+const ANSI_CYAN: &str = "\x1b[36m";
+const ANSI_GRAY: &str = "\x1b[90m";
+
+// ── Rendering helpers ───────────────────────────────────────────────────────
+
+/// Return the ANSI colour code for an access kind.
+fn access_colour(access: AccessKind) -> &'static str {
+    match access {
+        AccessKind::Allowed => ANSI_GREEN,
+        AccessKind::Denied => ANSI_RED,
+        AccessKind::Bypassed => ANSI_YELLOW,
+    }
+}
+
+/// Return the trailing label for an access kind (including leading space).
+fn access_suffix(access: AccessKind) -> &'static str {
+    match access {
+        AccessKind::Allowed => "",
+        AccessKind::Denied => " DENIED",
+        AccessKind::Bypassed => " BYPASS",
+    }
+}
+
+/// Single-letter abbreviation for an operation type.
+fn op_letter(op: OpType) -> &'static str {
+    match op {
+        OpType::Read => "R",
+        OpType::Write => "W",
+        _ => "A",
+    }
+}
+
+/// Format a path for display: left-padded to `width`, with ellipsis
+/// truncation when the path exceeds `width`.
+fn format_path_display(path: &std::path::Path, width: usize) -> String {
+    let s = path.display().to_string();
+    if s.len() > width {
+        let (_, tail) = s.split_at(s.len().saturating_sub(width - 3));
+        format!("...{tail}")
+    } else {
+        format!("{s:<width$}")
+    }
+}
+
+/// Truncate a process name to at most `max_chars` characters.
+fn format_truncated_name(name: &str, max_chars: usize) -> String {
+    if name.len() > max_chars {
+        name[..max_chars.saturating_sub(3)].to_string()
+    } else {
+        name.to_string()
+    }
+}
+
+/// Build a proportional unicode bar chart string (█ characters).
+fn bar_chart(value: u64, max: u64, width: u32) -> String {
+    let w = if max > 0 {
+        ((value as f64 / max as f64) * width as f64).round() as usize
+    } else {
+        0
+    };
+    "\u{2588}".repeat(w)
+}
+
+/// Format the hit-count suffix for a path snapshot.
+fn format_hit_suffix(hit_count: usize, access: AccessKind, last_op: OpType) -> String {
+    let label = access_suffix(access);
+    if matches!(access, AccessKind::Denied | AccessKind::Bypassed) {
+        format!("{hit_count}{label}")
+    } else if last_op == OpType::Write {
+        format!("{hit_count} W")
+    } else {
+        format!("{hit_count} R")
+    }
 }
