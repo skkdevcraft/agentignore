@@ -16,6 +16,9 @@ const REFRESH_MS: u64 = 500;
 
 /// Handle `agentignore mount <source> <mountpoint>`.
 pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool, show_config_files: bool) {
+    // Verify FUSE prerequisites before attempting to mount
+    crate::cmd::doctor::check_prerequisites(true);
+
     let source = source.canonicalize().expect("source path must exist");
 
     // Create mountpoint if it doesn't exist

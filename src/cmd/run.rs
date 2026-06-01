@@ -13,6 +13,9 @@ use std::process::Command as ProcessCommand;
 ///
 /// The first element of `command` is the program to run; the rest are its arguments.
 pub fn run(command: Vec<String>, source: Option<PathBuf>, show_config_files: bool) {
+    // Verify FUSE prerequisites before attempting to mount
+    crate::cmd::doctor::check_prerequisites(true);
+
     let source = source.unwrap_or_else(|| std::env::current_dir().unwrap());
     let source = source.canonicalize().expect("source path must exist");
     let mountpoint = create_temp_mountpoint(&source);

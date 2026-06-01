@@ -51,4 +51,6 @@ pub enum Command {
     Unmount { mountpoint: PathBuf },
     /// Validate the .agentignore in the current directory
     Check,
+    /// Diagnose FUSE environment prerequisites
+    Doctor,
 }

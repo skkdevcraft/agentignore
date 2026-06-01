@@ -42,6 +42,7 @@ fn main() {
         Command::Unmount { mountpoint } => cmd::unmount::unmount(mountpoint),
         Command::Init { folder } => cmd::init::init(folder),
         Command::Check => cmd::check::check(),
+        Command::Doctor => cmd::doctor::doctor(),
         Command::Explain { path } => cmd::explain::explain(path),
     }
 }

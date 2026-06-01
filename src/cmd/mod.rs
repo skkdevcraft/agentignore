@@ -3,6 +3,7 @@
 pub mod args;
 pub mod check;
 pub mod common;
+pub mod doctor;
 pub mod explain;
 pub mod init;
 pub mod mount;
