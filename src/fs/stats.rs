@@ -41,6 +41,11 @@ pub enum OpType {
     Link,
     Symlink,
     Statfs,
+    Setattr,
+    Flush,
+    Fsync,
+    Fsyncdir,
+    Access,
     /// Not a FUSE op — synthetic counter for denied access events.
     Denied,
 }
@@ -57,6 +62,11 @@ impl OpType {
             Self::Write => "WRITE",
             Self::Release => "RELEASE",
             Self::Readlink => "READLINK",
+            Self::Setattr => "SETATTR",
+            Self::Flush => "FLUSH",
+            Self::Fsync => "FSYNC",
+            Self::Fsyncdir => "FSYNCDIR",
+            Self::Access => "ACCESS",
             Self::Create => "CREATE",
             Self::Mkdir => "MKDIR",
             Self::Unlink => "UNLINK",
@@ -79,6 +89,11 @@ impl OpType {
         Self::Write,
         Self::Release,
         Self::Readlink,
+        Self::Setattr,
+        Self::Flush,
+        Self::Fsync,
+        Self::Fsyncdir,
+        Self::Access,
         Self::Create,
         Self::Mkdir,
         Self::Unlink,
@@ -153,9 +168,9 @@ pub struct PathSnapshot {
 /// Thread-safe by construction.  Clone the `Arc` to share across threads.
 pub struct StatsCollector {
     /// Per-op total counters.
-    op_totals: [AtomicU64; 18],
+    op_totals: [AtomicU64; 22],
     /// Per-op tick counters (reset on each `snapshot()`).
-    op_ticks: [AtomicU64; 18],
+    op_ticks: [AtomicU64; 22],
     /// Recent unique paths (newest first, max 10).
     recent: Mutex<VecDeque<PathEntry>>,
     /// Current open handle count.
@@ -193,8 +208,16 @@ impl StatsCollector {
                 AtomicU64::new(0),
                 AtomicU64::new(0),
                 AtomicU64::new(0),
+                AtomicU64::new(0),
+                AtomicU64::new(0),
+                AtomicU64::new(0),
+                AtomicU64::new(0),
             ],
             op_ticks: [
+                AtomicU64::new(0),
+                AtomicU64::new(0),
+                AtomicU64::new(0),
+                AtomicU64::new(0),
                 AtomicU64::new(0),
                 AtomicU64::new(0),
                 AtomicU64::new(0),

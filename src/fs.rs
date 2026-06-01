@@ -15,15 +15,16 @@ pub use self::policy_freshness::PolicyFreshnessGuard;
 
 use self::stats::{AccessKind, OpType, StatsCollector};
 use fuser::{
-    Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags, Generation, INodeNo, LockOwner,
-    OpenAccMode, OpenFlags, RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory,
-    ReplyEmpty, ReplyEntry, ReplyOpen, ReplyStatfs, ReplyWrite, Request, WriteFlags,
+    AccessFlags, BsdFileFlags, Errno, FileAttr, FileHandle, FileType, Filesystem, FopenFlags,
+    Generation, INodeNo, LockOwner, OpenAccMode, OpenFlags, RenameFlags, ReplyAttr, ReplyCreate,
+    ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen, ReplyStatfs, ReplyWrite, Request,
+    TimeOrNow, WriteFlags,
 };
 use std::ffi::{OsStr, OsString};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tracing::{debug, warn};
 
 const TTL: Duration = Duration::from_secs(1);
@@ -799,6 +800,238 @@ impl Filesystem for AgentFS {
                 s.fragment_size() as u32,
             ),
             Err(_) => reply.statfs(0, 0, 0, 0, 0, 512, 255, 512),
+        }
+    }
+
+    // ── setattr ─────────────────────────────────
+    fn setattr(
+        &self,
+        req: &Request,
+        ino: INodeNo,
+        mode: Option<u32>,
+        uid: Option<u32>,
+        gid: Option<u32>,
+        size: Option<u64>,
+        atime: Option<TimeOrNow>,
+        mtime: Option<TimeOrNow>,
+        _ctime: Option<SystemTime>,
+        _fh: Option<FileHandle>,
+        _crtime: Option<SystemTime>,
+        _chgtime: Option<SystemTime>,
+        _bkuptime: Option<SystemTime>,
+        _flags: Option<BsdFileFlags>,
+        reply: ReplyAttr,
+    ) {
+        self.ensure_policy_fresh();
+        let Some(real) = self.real_path(ino) else {
+            return reply.error(Errno::ENOENT);
+        };
+        if self.is_hidden_for_request(&real, Some(req)) {
+            return reply.error(Errno::ENOENT);
+        }
+
+        // ── truncate (size) ──
+        if let Some(new_size) = size {
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .open(&real)
+                .and_then(|f| f.set_len(new_size))
+            {
+                Ok(_) => {}
+                Err(e) => return reply.error(Errno::from(e)),
+            }
+        }
+
+        // ── chmod (mode) ──
+        if let Some(new_mode) = mode {
+            use std::os::unix::fs::PermissionsExt;
+            match std::fs::set_permissions(&real, std::fs::Permissions::from_mode(new_mode)) {
+                Ok(_) => {}
+                Err(e) => return reply.error(Errno::from(e)),
+            }
+        }
+
+        // ── chown (uid / gid) ──
+        if uid.is_some() || gid.is_some() {
+            // SAFETY:
+            // - `real` is a canonical path within the root, validated by `real_path()`.
+            //   It is a valid C string (NUL-terminated) via `CString` allocation.
+            // - `libc::chown` takes a C string pointer and uid/gid values. Negative uid/gid
+            //   means "leave unchanged" per POSIX; we pass -1 when the option is `None`.
+            let c_path = match std::ffi::CString::new(real.as_os_str().as_encoded_bytes()) {
+                Ok(p) => p,
+                Err(_) => return reply.error(Errno::EINVAL),
+            };
+            let real_uid = uid.unwrap_or(!0); // !0 == (uid_t)-1 → leave unchanged
+            let real_gid = gid.unwrap_or(!0);
+            let ret = unsafe { libc::chown(c_path.as_ptr(), real_uid, real_gid) };
+            if ret < 0 {
+                let err = unsafe { *libc::__errno_location() };
+                return reply.error(Errno::from_i32(err));
+            }
+        }
+
+        // ── utimens (atime / mtime) ──
+        if atime.is_some() || mtime.is_some() {
+            let mut times: [libc::timespec; 2] = [
+                libc::timespec {
+                    tv_sec: 0,
+                    tv_nsec: libc::UTIME_OMIT,
+                },
+                libc::timespec {
+                    tv_sec: 0,
+                    tv_nsec: libc::UTIME_OMIT,
+                },
+            ];
+
+            match atime {
+                None => {} /* already UTIME_OMIT */
+                Some(TimeOrNow::Now) => times[0].tv_nsec = libc::UTIME_NOW,
+                Some(TimeOrNow::SpecificTime(t)) => {
+                    let duration = t.duration_since(UNIX_EPOCH).unwrap_or_default();
+                    times[0].tv_sec = duration.as_secs() as libc::time_t;
+                    times[0].tv_nsec = duration.subsec_nanos() as libc::c_long;
+                }
+            }
+
+            match mtime {
+                None => {} /* already UTIME_OMIT */
+                Some(TimeOrNow::Now) => times[1].tv_nsec = libc::UTIME_NOW,
+                Some(TimeOrNow::SpecificTime(t)) => {
+                    let duration = t.duration_since(UNIX_EPOCH).unwrap_or_default();
+                    times[1].tv_sec = duration.as_secs() as libc::time_t;
+                    times[1].tv_nsec = duration.subsec_nanos() as libc::c_long;
+                }
+            }
+
+            let c_path = match std::ffi::CString::new(real.as_os_str().as_encoded_bytes()) {
+                Ok(p) => p,
+                Err(_) => return reply.error(Errno::EINVAL),
+            };
+            // SAFETY:
+            // - `c_path` is a valid NUL-terminated C string.
+            // - `times` is a properly-initialized array of two `timespec` structs.
+            // - `utimensat` with `AT_FDCWD` and path is equivalent to POSIX `utimensat`;
+            //   it does not write to any process-global state.
+            let ret =
+                unsafe { libc::utimensat(libc::AT_FDCWD, c_path.as_ptr(), times.as_ptr(), 0) };
+            if ret < 0 {
+                let err = unsafe { *libc::__errno_location() };
+                return reply.error(Errno::from_i32(err));
+            }
+        }
+
+        // Re-stat and return updated attributes
+        match self.stat(ino, &real) {
+            Some(attr) => {
+                self.record_op(OpType::Setattr, &real, req.pid(), AccessKind::Allowed);
+                reply.attr(&TTL, &attr);
+            }
+            None => reply.error(Errno::ENOENT),
+        }
+    }
+
+    // ── flush ───────────────────────────────────
+    fn flush(
+        &self,
+        _req: &Request,
+        _ino: INodeNo,
+        _fh: FileHandle,
+        _lock_owner: LockOwner,
+        reply: ReplyEmpty,
+    ) {
+        // In a passthrough filesystem, the real kernel-managed fd handles
+        // data flushing via its own page cache.  The FUSE flush callback is
+        // primarily used by applications that need close-time synchronization;
+        // the underlying real file's data is already written through.
+        reply.ok();
+    }
+
+    // ── fsync ───────────────────────────────────
+    fn fsync(
+        &self,
+        _req: &Request,
+        _ino: INodeNo,
+        fh: FileHandle,
+        datasync: bool,
+        reply: ReplyEmpty,
+    ) {
+        use std::os::unix::io::AsRawFd;
+
+        let handles = self
+            .handles
+            .lock()
+            .expect("handles Mutex poisoned — fatal process state");
+        let Some(file) = handles.get(fh) else {
+            return reply.error(Errno::EBADF);
+        };
+        let fd = file.as_raw_fd();
+        drop(handles);
+
+        // SAFETY:
+        // - `fd` is valid: obtained via `file.as_raw_fd()` from a `std::fs::File`
+        //   that was inserted by `open()` and is guaranteed live while the handle
+        //   table holds it.
+        // - `fsync` does not modify the fd state in a way that invalidates the
+        //   handle table's reference.
+        let ret = if datasync {
+            unsafe { libc::fdatasync(fd) }
+        } else {
+            unsafe { libc::fsync(fd) }
+        };
+        if ret < 0 {
+            let err = unsafe { *libc::__errno_location() };
+            reply.error(Errno::from_i32(err));
+        } else {
+            reply.ok();
+        }
+    }
+
+    // ── fsyncdir ────────────────────────────────
+    fn fsyncdir(
+        &self,
+        _req: &Request,
+        _ino: INodeNo,
+        _fh: FileHandle,
+        _datasync: bool,
+        reply: ReplyEmpty,
+    ) {
+        // We use stateless directory I/O (opendir returns a dummy handle),
+        // so there is no fd to sync.  The real filesystem's directory data
+        // is managed by the kernel's page cache.
+        reply.ok();
+    }
+
+    // ── access ──────────────────────────────────
+    fn access(&self, req: &Request, ino: INodeNo, mask: AccessFlags, reply: ReplyEmpty) {
+        self.ensure_policy_fresh();
+        let Some(real) = self.real_path(ino) else {
+            return reply.error(Errno::ENOENT);
+        };
+
+        // Policy check: if the file is hidden, deny access regardless of
+        // filesystem permissions.
+        if self.is_hidden_for_request(&real, Some(req)) {
+            return reply.error(Errno::ENOENT);
+        }
+
+        // Delegate to the real filesystem via libc::access().
+        let c_path = match std::ffi::CString::new(real.as_os_str().as_encoded_bytes()) {
+            Ok(p) => p,
+            Err(_) => return reply.error(Errno::EINVAL),
+        };
+        // SAFETY:
+        // - `c_path` is a valid NUL-terminated C string.
+        // - `libc::access` is read-only on the path and does not modify any
+        //   process-global state visible to Rust's std.
+        let ret = unsafe { libc::access(c_path.as_ptr(), mask.bits()) };
+        if ret < 0 {
+            // SAFETY: thread-local errno read immediately after a failed syscall.
+            let errno_val = unsafe { *libc::__errno_location() };
+            reply.error(Errno::from_i32(errno_val));
+        } else {
+            self.record_op(OpType::Access, &real, req.pid(), AccessKind::Allowed);
+            reply.ok();
         }
     }
 }
