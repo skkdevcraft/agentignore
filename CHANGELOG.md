@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.0] — 2026-06-01
+
+### Added
+
+- **`--show-config-files` / `-c` flag** on `mount` and `run` commands — makes
+  `.agentignore` and `.agentallow` files visible in the filtered view so users
+  can inspect or edit them through the mount.
+- **Passthrough FUSE operations** for broader compatibility with tools and
+  workflows:
+  - `setattr` — supports chmod, chown, truncate, and utimens (atime/mtime)
+    by delegating to the real filesystem.
+  - `fsync` / `fdatasync` — syncs the underlying file descriptor.
+  - `flush` — no-op (the real kernel-managed fd handles close-time flushing).
+  - `fsyncdir` — no-op (stateless directory I/O).
+  - `access` — checks real filesystem permissions after policy filtering.
+- **Stats tracking** for all new passthrough operations (`Setattr`, `Flush`,
+  `Fsync`, `Fsyncdir`, `Access`) in the live dashboard and `check` output.
+
 ## [0.1.0] — 2025-06-30
 
 ### Added
