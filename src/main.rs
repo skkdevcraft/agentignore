@@ -36,9 +36,9 @@ fn main() {
         Command::Mount {
             source,
             mountpoint,
-            no_dashboard,
+            show_dashboard,
             show_config_files,
-        } => cmd::mount::mount(source, mountpoint, no_dashboard, show_config_files),
+        } => cmd::mount::mount(source, mountpoint, show_dashboard, show_config_files),
         Command::Unmount { mountpoint } => cmd::unmount::unmount(mountpoint),
         Command::Init { folder } => cmd::init::init(folder),
         Command::Check => cmd::check::check(),

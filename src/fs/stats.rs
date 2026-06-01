@@ -317,7 +317,7 @@ impl StatsCollector {
     }
 
     /// Take a snapshot and reset tick counters.
-    pub fn snapshot(&self) -> Snapshot {
+    pub fn snapshot(&self, clear: bool) -> Snapshot {
         let mut ops = BTreeMap::new();
 
         for op_type in OpType::ALL {
@@ -339,6 +339,11 @@ impl StatsCollector {
                 last_op: e.last_op,
             })
             .collect();
+
+        if clear {
+            drop(recent); // Explicitly drop the MutexGuard
+            self.recent.lock().unwrap().clear();
+        }
 
         let open_handles = self.open_handles.load(Ordering::Relaxed);
 
@@ -363,7 +368,7 @@ mod tests {
     #[test]
     fn new_stats_collector_starts_empty() {
         let stats = StatsCollector::new();
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         for (total, ticks) in snap.ops.values() {
             assert_eq!(*total, 0);
             assert_eq!(*ticks, 0);
@@ -378,7 +383,7 @@ mod tests {
         let p = Path::new("/tmp/test.txt");
         stats.record_op(OpType::Read, p, 100, AccessKind::Allowed);
 
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         assert_eq!(snap.ops[&OpType::Read].0, 1); // total
         assert_eq!(snap.ops[&OpType::Read].1, 1); // tick
     }
@@ -389,11 +394,11 @@ mod tests {
         let p = Path::new("/tmp/test.txt");
         stats.record_op(OpType::Read, p, 100, AccessKind::Allowed);
 
-        let snap1 = stats.snapshot();
+        let snap1 = stats.snapshot(false);
         assert_eq!(snap1.ops[&OpType::Read].1, 1);
 
         // After snapshot, tick counter should be zero
-        let snap2 = stats.snapshot();
+        let snap2 = stats.snapshot(false);
         assert_eq!(snap2.ops[&OpType::Read].1, 0);
         // Total should persist
         assert_eq!(snap2.ops[&OpType::Read].0, 1);
@@ -411,7 +416,7 @@ mod tests {
             stats.record_op(OpType::Read, p, 100, AccessKind::Allowed);
         }
 
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         assert_eq!(snap.ops[&OpType::Lookup].0, 10);
         assert_eq!(snap.ops[&OpType::Read].0, 5);
     }
@@ -426,7 +431,7 @@ mod tests {
         stats.record_op(OpType::Read, p2, 101, AccessKind::Allowed);
         stats.record_op(OpType::Read, p1, 100, AccessKind::Allowed); // duplicate
 
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         assert_eq!(snap.recent_paths.len(), 2);
 
         // Most recent should be file1 (last accessed)
@@ -448,7 +453,7 @@ mod tests {
             stats.record_op(OpType::Read, p, 100, AccessKind::Allowed);
         }
 
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         assert_eq!(snap.recent_paths.len(), 10);
 
         // The first two files (file0, file1) should be gone
@@ -477,7 +482,7 @@ mod tests {
             stats.record_op(OpType::Read, p, 100, AccessKind::Allowed);
         }
 
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         assert_eq!(snap.recent_paths.len(), 1);
         assert_eq!(snap.recent_paths[0].hit_count, 5);
     }
@@ -490,7 +495,7 @@ mod tests {
 
         stats.record_op(OpType::Read, p, our_pid, AccessKind::Allowed);
 
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         assert_eq!(snap.recent_paths[0].pid, our_pid);
         assert!(!snap.recent_paths[0].process_name.is_empty());
     }
@@ -502,7 +507,7 @@ mod tests {
 
         stats.record_op(OpType::Read, p, 100, AccessKind::Denied);
 
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         assert_eq!(snap.recent_paths[0].access, AccessKind::Denied);
     }
 
@@ -513,20 +518,20 @@ mod tests {
         stats.record_handle_open();
         stats.record_handle_open();
         stats.record_handle_open();
-        let snap1 = stats.snapshot();
+        let snap1 = stats.snapshot(false);
         assert_eq!(snap1.open_handles, 3);
 
         stats.record_handle_close();
-        let snap2 = stats.snapshot();
+        let snap2 = stats.snapshot(false);
         assert_eq!(snap2.open_handles, 2);
     }
 
     #[test]
     fn uptime_increases() {
         let stats = StatsCollector::new();
-        let snap1 = stats.snapshot();
+        let snap1 = stats.snapshot(false);
         std::thread::sleep(std::time::Duration::from_millis(10));
-        let snap2 = stats.snapshot();
+        let snap2 = stats.snapshot(false);
         assert!(snap2.uptime > snap1.uptime);
     }
 
@@ -536,7 +541,7 @@ mod tests {
         stats.set_source(PathBuf::from("/src"));
         stats.set_mountpoint(PathBuf::from("/mnt"));
 
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         assert_eq!(snap.source, PathBuf::from("/src"));
         assert_eq!(snap.mountpoint, PathBuf::from("/mnt"));
     }
@@ -548,7 +553,7 @@ mod tests {
 
         stats.record_op(OpType::Denied, p, 100, AccessKind::Denied);
 
-        let snap = stats.snapshot();
+        let snap = stats.snapshot(false);
         assert!(snap.ops[&OpType::Denied].0 >= 1);
         assert_eq!(snap.recent_paths[0].access, AccessKind::Denied);
     }
