@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.0] — 2026-06-01
+
+### Added
+
+- **`doctor` subcommand** — checks that all FUSE prerequisites are met before
+  mounting: verifies `fusermount3` is installed, `/dev/fuse` is accessible,
+  `libfuse3` is present, and the `fuse` kernel module is loaded.
+- **`--show-dashboard` / `-d` flag** (replaces `--no-dashboard`). The dashboard
+  is now hidden by default; pass this flag to enable the live stats view.
+  The default access summary is printed on mount regardless.
+
+### Changed
+
+- **Flag inversion**: `--no-dashboard` removed in favour of `--show-dashboard`.
+  The dashboard is now opt-in, making the default mount output cleaner for
+  scripting and headless use.
+- **Dashboard output refactored** — internal code optimised for fewer
+  allocations and clearer structure.
+
 ## [0.2.0] — 2026-06-01
 
 ### Added
@@ -18,7 +37,7 @@
 - **Stats tracking** for all new passthrough operations (`Setattr`, `Flush`,
   `Fsync`, `Fsyncdir`, `Access`) in the live dashboard and `check` output.
 
-## [0.1.0] — 2025-06-30
+## [0.1.0] — 2025-05-30
 
 ### Added
 
