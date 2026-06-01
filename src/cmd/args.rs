@@ -40,9 +40,9 @@ pub enum Command {
     Mount {
         source: PathBuf,
         mountpoint: PathBuf,
-        /// Disable the live dashboard (no stats collection, no rendering)
-        #[arg(long = "no-dashboard", short = 'D', default_value_t = false)]
-        no_dashboard: bool,
+        /// Enable the live dashboard (stats collection and rendering)
+        #[arg(long = "show-dashboard", short = 'D', default_value_t = false)]
+        show_dashboard: bool,
         /// Show .agentignore and .agentallow files in the filtered view
         #[arg(short = 'c', long = "show-config-files", default_value_t = false)]
         show_config_files: bool,

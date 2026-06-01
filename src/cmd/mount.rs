@@ -15,7 +15,7 @@ use agentignore::fs::stats::{AccessKind, OpType, StatsCollector};
 const REFRESH_MS: u64 = 500;
 
 /// Handle `agentignore mount <source> <mountpoint>`.
-pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool, show_config_files: bool) {
+pub fn mount(source: PathBuf, mountpoint: PathBuf, show_dashboard: bool, show_config_files: bool) {
     // Verify FUSE prerequisites before attempting to mount
     crate::cmd::doctor::check_prerequisites(true);
 
@@ -29,10 +29,9 @@ pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool, show_conf
         false
     };
 
-    // Create stats collector (or not)
-    let stats = if no_dashboard {
-        None
-    } else {
+    // Always create the stats collector so we can track recent paths
+    // even in no-dashboard mode
+    let stats = {
         let s = StatsCollector::new();
         s.set_source(source.clone());
         s.set_mountpoint(mountpoint.clone());
@@ -71,11 +70,52 @@ pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool, show_conf
         })
         .expect("failed to spawn mount thread");
 
-    if no_dashboard {
+    if !show_dashboard {
         // ── No-dashboard mode ──────────────────────────────────────────────
+        // Print newly accessed paths since the last check, one per line.
         println!("Mounting AgentIgnore: {:?} → {:?}", source, mountpoint);
+
+        let stats = stats.expect("stats should be Some in no-dashboard mode");
+
         loop {
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(std::time::Duration::from_millis(REFRESH_MS));
+
+            let snap = stats.snapshot(true);
+
+            // Print paths that appeared since the last check
+            for ps in snap.recent_paths.iter() {
+                let path_str = ps.path.display().to_string();
+                let display_path = format!("{:<40}", path_str);
+                // Colour based on access kind
+                let (colour, access_label) = match ps.access {
+                    AccessKind::Allowed => ("\x1b[32m", ""),
+                    AccessKind::Denied => ("\x1b[31m", " DENIED"),
+                    AccessKind::Bypassed => ("\x1b[33m", " BYPASS"),
+                };
+
+                let op_letter = match ps.last_op {
+                    OpType::Read => "R",
+                    OpType::Write => "W",
+                    _ => "A",
+                };
+
+                let proc_name = if ps.process_name.len() > 16 {
+                    &ps.process_name[..13]
+                } else {
+                    &ps.process_name
+                };
+
+                let suffix = if matches!(ps.access, AccessKind::Denied | AccessKind::Bypassed) {
+                    format!("{}{access_label}", ps.hit_count)
+                } else if ps.last_op == OpType::Write {
+                    format!("{} W", ps.hit_count)
+                } else {
+                    format!("{} R", ps.hit_count)
+                };
+
+                println!("{colour}{op_letter} {suffix} {proc_name:<14} {display_path} \x1b[0m");
+            }
+
             if shutdown.load(Ordering::SeqCst) {
                 break;
             }
@@ -92,7 +132,7 @@ pub fn mount(source: PathBuf, mountpoint: PathBuf, no_dashboard: bool, show_conf
         let stats = stats.expect("stats should be Some in dashboard mode");
 
         loop {
-            let snap = stats.snapshot();
+            let snap = stats.snapshot(false);
 
             render_dashboard(&snap);
 
