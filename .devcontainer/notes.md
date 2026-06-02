@@ -21,6 +21,8 @@ sudo apt install fuse3
 ```
 
 ```bash
+cargo install cargo-npm
+
 sudo apt-get install gcc-aarch64-linux-gnu
 sudo apt-get install gcc-x86-64-linux-gnu
 sudp apt-get build-essentials
@@ -32,6 +34,6 @@ cargo build --release --target aarch64-unknown-linux-gnu
 cargo build --release --target x86_64-unknown-linux-gnu
 
 cargo npm generate
-cargo npm publish
+cargo npm publish -- --otp xxxxxx --access public
 
 ```

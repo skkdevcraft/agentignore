@@ -1,6 +1,7 @@
 # agentignore
 
 [![Crates.io](https://img.shields.io/crates/v/agentignore)](https://crates.io/crates/agentignore)
+[![npm version](https://img.shields.io/npm/v/@xlansoftware/agentignore)](https://www.npmjs.com/package/@xlansoftware/agentignore)
 
 Policy-Filtered Filesystem for AI Agents.
 
@@ -28,6 +29,29 @@ All visible files behave as a transparent passthrough: reads and writes go direc
 - [Development](#development)
 
 ## Quick Start
+
+**Install via your favorite package manager:**
+```bash
+# npm
+npm install -g --ignore-scripts @xlansoftware/agentignore
+
+# pnpm
+pnpm add -g --ignore-scripts @xlansoftware/agentignore
+
+# bun
+bun add -g --ignore-scripts @xlansoftware/agentignore
+
+# run it
+agentignore run bash
+```
+
+**Install via crate:**
+```bash
+cargo install agentignore
+agentignore run bash
+```
+
+**Or build from source with Cargo:**
 
 ```bash
 # 1. Ensure FUSE is available (see Prerequisites below)
