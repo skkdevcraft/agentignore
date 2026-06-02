@@ -99,10 +99,10 @@ fn hot_reload_invalidates_inode_cache() {
     fs.set_check_interval(0);
 
     // Look up both files to cache their inodes (neither matches *.secret)
-    let (_path1, ino1) = fs
+    let (_path1, _, ino1) = fs
         .lookup_child(INodeNo::ROOT, OsStr::new("visible.rs"), None)
         .unwrap();
-    let (_path2, ino2) = fs
+    let (_path2, _, ino2) = fs
         .lookup_child(INodeNo::ROOT, OsStr::new("test.txt"), None)
         .unwrap();
 
@@ -124,10 +124,10 @@ fn hot_reload_invalidates_inode_cache() {
     assert!(fs.real_path(INodeNo(ino2)).is_none());
 
     // Both files should now be visible and get new inodes
-    let (_path3, new_ino1) = fs
+    let (_path3, _, new_ino1) = fs
         .lookup_child(INodeNo::ROOT, OsStr::new("visible.rs"), None)
         .unwrap();
-    let (_path4, new_ino2) = fs
+    let (_path4, _, new_ino2) = fs
         .lookup_child(INodeNo::ROOT, OsStr::new("test.txt"), None)
         .unwrap();
 

@@ -284,7 +284,7 @@ fn cascading_agentignore_with_agentfs_integration() {
             .is_some()
     );
 
-    let (logs_path, logs_ino) = fs
+    let (logs_path, _, logs_ino) = fs
         .lookup_child(INodeNo::ROOT, OsStr::new("logs"), None)
         .unwrap();
     assert!(logs_path.ends_with("logs"));
