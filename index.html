@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>agentignore</title>
+
+<!-- <link rel="stylesheet" type="text/css" href="/style.css" /> -->
+<link rel="stylesheet" type="text/css" href="/asciinema-player.css" />
+
+</head>
+
+<body>
+
+<section class="hero">
+    <div class="container">
+        <div class="hero-inner">
+
+            <div class="badge">
+                CLI Tool for AI Agents
+            </div>
+
+            <h1>
+                <span class="gradient">agentignore</span>
+            </h1>
+
+            <p class="slogan">
+                Use <code>.agentignore</code> to control what your agent see.
+            </p>
+
+        </div>
+    </div>
+</section>
+
+<section id="install">
+    <div class="container">
+        <p class="section-subtitle">
+            Install agentignore using your preferred package manager.
+        </p>
+
+        <div class="install-card">
+
+            <div class="tabs">
+                <button class="tab active" data-tab="npm">npm</button>
+                <button class="tab" data-tab="pnpm">pnpm</button>
+                <button class="tab" data-tab="bun">bun</button>
+            </div>
+
+            <div class="code-container">
+
+                <button class="copy-btn">
+                    Copy
+                </button>
+
+<pre><code id="install-code">npm install -g agentignore</code></pre>
+
+            </div>
+
+        </div>
+
+    </div>
+</section>
+<section>
+    <div class="container">
+
+        <h2 class="section-title">
+            Why agentignore?
+        </h2>
+
+        <p class="section-subtitle">
+            Watch agentignore in action.
+        </p>
+
+        <div id="demo" class="demo-card">
+
+        </div>
+
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="container">
+        agentignore © 2026
+    </div>
+</footer>
+
+<script>
+const tabs = document.querySelectorAll(".tab");
+const code = document.getElementById("install-code");
+const copyBtn = document.querySelector(".copy-btn");
+
+const commands = {
+    npm: "npm install -g agentignore",
+    pnpm: "pnpm add -g agentignore",
+    bun: "bun add -g agentignore"
+};
+
+tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        const key = tab.dataset.tab;
+        code.textContent = commands[key];
+    });
+});
+
+copyBtn.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(code.textContent);
+
+    const original = copyBtn.textContent;
+
+    copyBtn.textContent = "Copied!";
+
+    setTimeout(() => {
+        copyBtn.textContent = original;
+    }, 1500);
+});
+</script>
+
+<script src="/asciinema-player.min.js"></script>
+<script>
+    AsciinemaPlayer.create('http://localhost:39713/demo.cast', document.getElementById('demo'), {
+        // loop: true,
+        // theme: 'dracula',
+        // autoPlay: true,
+        poster: 'npt:0:26',
+    });
+</script>
+</body>
+</html>
