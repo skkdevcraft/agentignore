@@ -161,7 +161,7 @@ agentignore run bash
 agentignore run -- ls -la
 
 # Run from a specific source directory
-agentignore run -source /home/user/project bash 
+agentignore run --source /home/user/project bash 
 ```
 
 ### `explain` — debug visibility
@@ -250,7 +250,7 @@ java
 
 ### Build prerequisites
 
-See [`https://rust-lang.org/tools/install/`](https://rust-lang.org/tools/install/) how to how to prepare rust dev environmet or use the provided devcontainer in this repo.
+See [`https://rust-lang.org/tools/install/`](https://rust-lang.org/tools/install/) how to prepare rust dev environmet or use the provided devcontainer in this repo.
 
 ### Build commands
 
