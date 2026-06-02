@@ -323,7 +323,7 @@ fn cascading_agentallow_with_agentfs_integration_lookup() {
             .is_some()
     );
 
-    let (_project_path, project_ino) = fs
+    let (_project_path, _, project_ino) = fs
         .lookup_child(fuser::INodeNo::ROOT, OsStr::new("project"), None)
         .unwrap();
 

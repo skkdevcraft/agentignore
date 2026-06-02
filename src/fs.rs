@@ -102,29 +102,66 @@ impl AgentFS {
         self.guard.inodes_read().path(ino.0).cloned()
     }
 
-    /// Resolve parent inode + child name → (canonical real path, inode).
+    /// Resolve a `(parent_ino, name)` pair into:
+    /// - `access_path`: the literal joined path (not canonicalized — may be a symlink)
+    /// - `resolved`: the canonicalized target for security checks (`None` if dangling)
+    ///
+    /// Returns `None` if the parent inode is unknown, or if the resolved target
+    /// (when it exists) escapes the root or is hidden.
+    ///
+    /// Dangling symlinks (where `canonicalize` fails) are accepted — the access
+    /// path is returned with `resolved = None` and security checks are skipped.
+    fn resolve_child(
+        &self,
+        parent: INodeNo,
+        name: &OsStr,
+        req: Option<&Request>,
+    ) -> Option<(PathBuf, Option<PathBuf>)> {
+        let parent_real = self.real_path(parent)?;
+        let access_path = parent_real.join(name);
+
+        // The access path must exist on the filesystem (it may be a symlink,
+        // including a dangling one).  Non-existent paths are rejected here.
+        std::fs::symlink_metadata(&access_path).ok()?;
+
+        // Resolve symlinks for security checks only.
+        let resolved = std::fs::canonicalize(&access_path).ok();
+
+        // Escape check on the resolved target.
+        if let Some(ref r) = resolved {
+            if !r.starts_with(&self.root) {
+                warn!("DENY path-escape: {access_path:?} → {r:?}");
+                return None;
+            }
+        }
+
+        // Hidden-target check on the resolved target.
+        if let Some(ref r) = resolved {
+            if self.is_hidden_for_request(r, req) {
+                debug!("DENY lookup hidden via symlink: {access_path:?}");
+                return None;
+            }
+        }
+
+        Some((access_path, resolved))
+    }
+
+    /// Resolve parent inode + child name → (access path, resolved target, inode).
     /// Returns `None` if the child is hidden, missing, or escapes the root.
+    ///
+    /// The returned access path is the logical joined path (NOT canonicalized).
+    /// The resolved target is used only for security checks and is `None` for
+    /// dangling symlinks.
     pub fn lookup_child(
         &self,
         parent: INodeNo,
         name: &OsStr,
         req: Option<&Request>,
-    ) -> Option<(PathBuf, u64)> {
+    ) -> Option<(PathBuf, Option<PathBuf>, u64)> {
         self.ensure_policy_fresh();
-        let parent_real = self.real_path(parent)?;
-        let child_real = parent_real.join(name);
-        let canonical = std::fs::canonicalize(&child_real).ok()?;
-
-        if !canonical.starts_with(&self.root) {
-            warn!("DENY path-escape: {child_real:?} → {canonical:?}");
-            return None;
-        }
-        if self.is_hidden_for_request(&canonical, req) {
-            debug!("DENY lookup hidden: {canonical:?}");
-            return None;
-        }
-        let ino = self.guard.inodes_write().get_or_insert(&canonical);
-        Some((canonical, ino))
+        let (access_path, resolved) = self.resolve_child(parent, name, req)?;
+        let ino = self.guard.inodes_write().get_or_insert(&access_path);
+        Some((access_path, resolved, ino))
     }
 
     /// Build a `FileAttr` from real filesystem metadata for the given inode + path.
@@ -226,10 +263,9 @@ impl Filesystem for AgentFS {
     fn lookup(&self, req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
         match self.lookup_child(parent, name, Some(req)) {
             None => reply.error(Errno::ENOENT),
-            Some((real, ino)) => {
-                // Pass the canonical real path instead of bare filename
-                self.record_op(OpType::Lookup, &real, req.pid(), AccessKind::Allowed);
-                match self.stat(INodeNo(ino), &real) {
+            Some((access_path, _resolved, ino)) => {
+                self.record_op(OpType::Lookup, &access_path, req.pid(), AccessKind::Allowed);
+                match self.stat(INodeNo(ino), &access_path) {
                     None => reply.error(Errno::ENOENT),
                     Some(attr) => reply.entry(&TTL, &attr, Generation(0)),
                 }
@@ -298,14 +334,18 @@ impl Filesystem for AgentFS {
                 continue;
             }
 
-            let canonical = match std::fs::canonicalize(&child_real) {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
-            if self.is_hidden_for_request(&canonical, Some(req)) {
-                continue;
+            // Security check uses the resolved (canonicalized) target
+            let resolved = std::fs::canonicalize(&child_real).ok();
+            if let Some(ref r) = resolved {
+                if self.is_hidden_for_request(r, Some(req)) {
+                    continue;
+                }
             }
-            let child_ino = self.guard.inodes_write().get_or_insert(&canonical);
+
+            // Inode is stored at the ACCESS path (may be a symlink), not the
+            // resolved target. This ensures symlinks and their targets get
+            // distinct inodes and that stat on a symlink returns symlink attrs.
+            let child_ino = self.guard.inodes_write().get_or_insert(&child_real);
             let kind = match entry.file_type() {
                 Ok(ft) if ft.is_dir() => FileType::Directory,
                 Ok(ft) if ft.is_symlink() => FileType::Symlink,
@@ -536,37 +576,30 @@ impl Filesystem for AgentFS {
         reply: ReplyEmpty,
     ) {
         self.ensure_policy_fresh();
-        let Some(src_parent_real) = self.real_path(parent) else {
-            return reply.error(Errno::ENOENT);
+        let (src_path, _src_resolved) = match self.resolve_child(parent, name, Some(req)) {
+            Some(pair) => pair,
+            None => return reply.error(Errno::ENOENT),
         };
-        let src_real = src_parent_real.join(name);
-        let src_canonical = match std::fs::canonicalize(&src_real) {
-            Ok(p) => p,
-            Err(_) => return reply.error(Errno::ENOENT),
-        };
-        if self.is_hidden_for_request(&src_canonical, Some(req)) {
-            warn!("DENY rename of hidden: {src_canonical:?}");
-            return reply.error(Errno::ENOENT);
-        }
 
         let Some(dst_parent_real) = self.real_path(newparent) else {
             return reply.error(Errno::ENOENT);
         };
-        let dst_real = dst_parent_real.join(newname);
-        if self.is_hidden_for_request(&dst_real, Some(req)) {
-            warn!("DENY rename into hidden dest: {dst_real:?}");
-            return reply.error(Errno::ENOENT);
+        let dst_path = dst_parent_real.join(newname);
+
+        // Security check on the destination's resolved target.
+        if let Ok(dst_resolved) = std::fs::canonicalize(&dst_path) {
+            if !dst_resolved.starts_with(&self.root)
+                || self.is_hidden_for_request(&dst_resolved, Some(req))
+            {
+                warn!("DENY rename into hidden/escaped dest: {dst_path:?}");
+                return reply.error(Errno::ENOENT);
+            }
         }
 
-        self.guard.inodes_write().evict_prefix(&src_canonical);
-        match std::fs::rename(&src_canonical, &dst_real) {
+        self.guard.inodes_write().evict_prefix(&src_path);
+        match std::fs::rename(&src_path, &dst_path) {
             Ok(_) => {
-                self.record_op(
-                    OpType::Rename,
-                    &src_canonical,
-                    req.pid(),
-                    AccessKind::Allowed,
-                );
+                self.record_op(OpType::Rename, &src_path, req.pid(), AccessKind::Allowed);
                 reply.ok();
             }
             Err(e) => reply.error(Errno::from(e)),
@@ -739,21 +772,14 @@ impl Filesystem for AgentFS {
     // ── unlink ──────────────────────────────────
     fn unlink(&self, req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
         self.ensure_policy_fresh();
-        let Some(parent_real) = self.real_path(parent) else {
-            return reply.error(Errno::ENOENT);
+        let (access_path, _resolved) = match self.resolve_child(parent, name, Some(req)) {
+            Some(pair) => pair,
+            None => return reply.error(Errno::ENOENT),
         };
-        let child_real = parent_real.join(name);
-        let canonical = match std::fs::canonicalize(&child_real) {
-            Ok(p) => p,
-            Err(_) => return reply.error(Errno::ENOENT),
-        };
-        if self.is_hidden_for_request(&canonical, Some(req)) {
-            return reply.error(Errno::ENOENT);
-        }
-        self.guard.inodes_write().evict_prefix(&canonical);
-        match std::fs::remove_file(&canonical) {
+        self.guard.inodes_write().evict_prefix(&access_path);
+        match std::fs::remove_file(&access_path) {
             Ok(_) => {
-                self.record_op(OpType::Unlink, &canonical, req.pid(), AccessKind::Allowed);
+                self.record_op(OpType::Unlink, &access_path, req.pid(), AccessKind::Allowed);
                 reply.ok();
             }
             Err(e) => reply.error(Errno::from(e)),
@@ -763,21 +789,14 @@ impl Filesystem for AgentFS {
     // ── rmdir ───────────────────────────────────
     fn rmdir(&self, req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
         self.ensure_policy_fresh();
-        let Some(parent_real) = self.real_path(parent) else {
-            return reply.error(Errno::ENOENT);
+        let (access_path, _resolved) = match self.resolve_child(parent, name, Some(req)) {
+            Some(pair) => pair,
+            None => return reply.error(Errno::ENOENT),
         };
-        let child_real = parent_real.join(name);
-        let canonical = match std::fs::canonicalize(&child_real) {
-            Ok(p) => p,
-            Err(_) => return reply.error(Errno::ENOENT),
-        };
-        if self.is_hidden_for_request(&canonical, Some(req)) {
-            return reply.error(Errno::ENOENT);
-        }
-        self.guard.inodes_write().evict_prefix(&canonical);
-        match std::fs::remove_dir(&canonical) {
+        self.guard.inodes_write().evict_prefix(&access_path);
+        match std::fs::remove_dir(&access_path) {
             Ok(_) => {
-                self.record_op(OpType::Rmdir, &canonical, req.pid(), AccessKind::Allowed);
+                self.record_op(OpType::Rmdir, &access_path, req.pid(), AccessKind::Allowed);
                 reply.ok();
             }
             Err(e) => reply.error(Errno::from(e)),

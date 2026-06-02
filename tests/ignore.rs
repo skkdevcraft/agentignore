@@ -13,7 +13,7 @@ fn hides_env_file() {
     let matcher = builder.build().unwrap();
 
     let hidden = matcher
-        .matched_path_or_any_parents(&dir.path().join(".env"), false)
+        .matched_path_or_any_parents(dir.path().join(".env"), false)
         .is_ignore();
     assert!(hidden);
 }
