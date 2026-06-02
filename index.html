@@ -72,7 +72,25 @@
             Reduce the noise in the agent's context. Hide irrelevant files. Watch agentignore in action.
         </p>
 
-        <div id="demo" class="demo-card">
+        <div id="demo1" class="demo-card">
+
+        </div>
+
+    </div>
+</section>
+
+<section>
+    <div class="container">
+
+        <h2 class="section-title">
+            Invisible for the agent, but still able to build the app:
+        </h2>
+
+        <p class="section-subtitle">
+            Use <code>.agentignore</code> to hide files and folders and <code>.agentallow</code> to define which process can see all.
+        </p>
+
+        <div id="demo2" class="demo-card">
 
         </div>
 
@@ -122,9 +140,14 @@ copyBtn.addEventListener("click", async () => {
 
 <script src="/asciinema-player.min.js"></script>
 <script>
-    AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
+    AsciinemaPlayer.create('/demo.cast', document.getElementById('demo1'), {
         poster: 'npt:0:17.9',
     });
+
+    AsciinemaPlayer.create('/demo-pi.cast', document.getElementById('demo2'), {
+        poster: 'npt:0:33',
+    });
+
 </script>
 </body>
 </html>
