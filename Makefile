@@ -1,4 +1,4 @@
-.PHONY: dev mount umount prepare publish pre-publish check clean
+.PHONY: dev mount umount prepare publish pre-publish check clean npm-build
 
 dev:
 	mkdir -p /tmp/agentignore
@@ -40,3 +40,9 @@ clean:
 		echo "Cleaning up mount point..."; \
 		fusermount3 -u /tmp/agentignore 2>/dev/null || true; \
 	fi
+
+npm-build:
+	cargo clean
+	cargo build --release --target aarch64-unknown-linux-gnu
+	cargo build --release --target x86_64-unknown-linux-gnu
+	cargo npm generate

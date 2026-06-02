@@ -41,3 +41,12 @@ regex = "1.12.3"
 
 [dev-dependencies]
 tempfile = "3.27"
+
+[package.metadata.npm]
+access = "public"
+targets = [
+  "x86_64-unknown-linux-gnu", 
+  "aarch64-unknown-linux-gnu"
+]
+prefix = "@xlansoftware/agentignore-"
+
