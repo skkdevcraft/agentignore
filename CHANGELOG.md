@@ -1,5 +1,50 @@
 # Changelog
 
+## [0.4.2] — 2026-06-02
+
+### Added
+
+- **npm distribution** — agentignore is now published on npm as
+  `@xlansoftware/agentignore`. Install with `npm install -g --ignore-scripts
+  @xlansoftware/agentignore`, or via pnpm/bun. Cross-compiled for
+  `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`.
+- **`npm-build` make target** for cross-compiling and generating the npm
+  package via `cargo npm`.
+- **Dangling symlink visibility** — symlinks whose targets do not exist are
+  now visible through the mount (previously rejected with `ENOENT`).
+- **`resolve_child` helper** — internal refactor splitting `lookup_child` into
+  a lower-level `resolve_child` that returns the access path and resolved
+  target separately, enabling better symlink-aware security checks.
+
+### Changed
+
+- **Symlink inode tracking** — inodes are now assigned to the symlink's
+  *access path* (the symlink entry itself), not the canonicalized target.
+  Symlinks and their targets receive distinct inodes. Two symlinks pointing
+  to the same target also get distinct inodes.
+- **`lookup_child` return type** — expanded from `(PathBuf, u64)` to
+  `(PathBuf, Option<PathBuf>, u64)` where the second element is the resolved
+  canonical target (`None` for dangling symlinks).
+- **`unlink` and `rmdir`** — operate on the access path rather than the
+  canonical target, preventing accidental deletion of symlink targets when
+  removing the symlink itself.
+- **`stat` on symlinks** — returns correct symlink metadata (size = length
+  of target path string, not target file content size).
+- **Security checks on rename** — destination path is now verified against
+  both escape and hidden-file rules on the resolved target.
+- **`stat` test fixture** — `test_dir` helper no longer applies
+  `atime`/`mtime` (the old approach was racy and unnecessary for symlink
+  tests).
+
+### Fixed
+
+- **Hidden-target symlink bypass** — symlinks pointing to hidden files
+  (e.g., `.env`) are now correctly rejected at lookup time. Previously
+  the canonicalization resolved through the symlink, but the hidden check
+  was inconsistent with the new access-path inode model.
+- **Symlink deletion semantics** — `unlink` on a symlink no longer removes
+  the target file.
+
 ## [0.3.0] — 2026-06-01
 
 ### Added
