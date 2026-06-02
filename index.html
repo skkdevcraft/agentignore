@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>agentignore</title>
 
-<!-- <link rel="stylesheet" type="text/css" href="/style.css" /> -->
+<link rel="stylesheet" type="text/css" href="/style.css" />
 <link rel="stylesheet" type="text/css" href="/asciinema-player.css" />
 
 </head>
@@ -17,7 +17,7 @@
         <div class="hero-inner">
 
             <div class="badge">
-                CLI Tool for AI Agents
+                CLI Tool for AI Agents <a href="https://github.com/skkdevcraft/agentignore">GitHub</a>
             </div>
 
             <h1>
@@ -44,6 +44,7 @@
                 <button class="tab active" data-tab="npm">npm</button>
                 <button class="tab" data-tab="pnpm">pnpm</button>
                 <button class="tab" data-tab="bun">bun</button>
+                <button class="tab" data-tab="cargo">cargo</button>
             </div>
 
             <div class="code-container">
@@ -52,7 +53,7 @@
                     Copy
                 </button>
 
-<pre><code id="install-code">npm install -g agentignore</code></pre>
+<pre><code id="install-code">npm install -g --ignore-scripts @xlansoftware/agentignore</code></pre>
 
             </div>
 
@@ -68,7 +69,7 @@
         </h2>
 
         <p class="section-subtitle">
-            Watch agentignore in action.
+            Reduce the noise in the agent's context. Hide irrelevant files. Watch agentignore in action.
         </p>
 
         <div id="demo" class="demo-card">
@@ -80,7 +81,7 @@
 
 <footer class="footer">
     <div class="container">
-        agentignore © 2026
+        agentignore <a href="https://github.com/skkdevcraft/agentignore">GitHub</a>© 2026
     </div>
 </footer>
 
@@ -90,9 +91,10 @@ const code = document.getElementById("install-code");
 const copyBtn = document.querySelector(".copy-btn");
 
 const commands = {
-    npm: "npm install -g agentignore",
-    pnpm: "pnpm add -g agentignore",
-    bun: "bun add -g agentignore"
+    npm: "npm install -g --ignore-scripts @xlansoftware/agentignore",
+    pnpm: "pnpm add -g --ignore-scripts @xlansoftware/agentignore",
+    bun: "bun add -g --ignore-scripts @xlansoftware/agentignore",
+    cargo: "cargo install agentignore"
 };
 
 tabs.forEach(tab => {
@@ -120,11 +122,8 @@ copyBtn.addEventListener("click", async () => {
 
 <script src="/asciinema-player.min.js"></script>
 <script>
-    AsciinemaPlayer.create('http://localhost:39713/demo.cast', document.getElementById('demo'), {
-        // loop: true,
-        // theme: 'dracula',
-        // autoPlay: true,
-        poster: 'npt:0:26',
+    AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
+        poster: 'npt:0:17.9',
     });
 </script>
 </body>
