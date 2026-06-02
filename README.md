@@ -1,6 +1,7 @@
 # agentignore
 
 [![Crates.io](https://img.shields.io/crates/v/agentignore)](https://crates.io/crates/agentignore)
+[![npm version](https://img.shields.io/npm/v/@xlansoftware/agentignore)](https://www.npmjs.com/package/@xlansoftware/agentignore)
 
 Policy-Filtered Filesystem for AI Agents.
 
@@ -28,6 +29,29 @@ All visible files behave as a transparent passthrough: reads and writes go direc
 - [Development](#development)
 
 ## Quick Start
+
+**Install via your favorite package manager:**
+```bash
+# npm
+npm install -g --ignore-scripts @xlansoftware/agentignore
+
+# pnpm
+pnpm add -g --ignore-scripts @xlansoftware/agentignore
+
+# bun
+bun add -g --ignore-scripts @xlansoftware/agentignore
+
+# run it
+agentignore run bash
+```
+
+**Install via crate:**
+```bash
+cargo install agentignore
+agentignore run bash
+```
+
+**Or build from source with Cargo:**
 
 ```bash
 # 1. Ensure FUSE is available (see Prerequisites below)
@@ -137,7 +161,7 @@ agentignore run bash
 agentignore run -- ls -la
 
 # Run from a specific source directory
-agentignore run -source /home/user/project bash 
+agentignore run --source /home/user/project bash 
 ```
 
 ### `explain` — debug visibility
@@ -226,7 +250,7 @@ java
 
 ### Build prerequisites
 
-See [`https://rust-lang.org/tools/install/`](https://rust-lang.org/tools/install/) how to how to prepare rust dev environmet or use the provided devcontainer in this repo.
+See [`https://rust-lang.org/tools/install/`](https://rust-lang.org/tools/install/) how to prepare rust dev environmet or use the provided devcontainer in this repo.
 
 ### Build commands
 

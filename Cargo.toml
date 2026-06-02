@@ -1,7 +1,7 @@
 [package]
 name = "agentignore"
 authors = ["Stoyan Krastev (skkdevcraft)"]
-version = "0.3.0"
+version = "0.4.1"
 edition = "2024"
 repository = "https://github.com/skkdevcraft/agentignore"
 license = "MIT"
@@ -41,3 +41,8 @@ regex = "1.12.3"
 
 [dev-dependencies]
 tempfile = "3.27"
+
+[package.metadata.npm]
+name = "@xlansoftware/agentignore"
+targets = ["x86_64-unknown-linux-gnu","aarch64-unknown-linux-gnu"]
+prefix = "@xlansoftware/agentignore-"
