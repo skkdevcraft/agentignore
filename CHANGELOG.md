@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.4.3] — 2026-06-03
+
+### Added
+
+- **Integration tests for `agentignore run` cleanup** — new `tests/run.rs`
+  suite verifies that mountpoint directories are cleaned up after both
+  valid and invalid commands, and that error messages appear on stderr.
+
+### Changed
+
+- **`agentignore run` error handling** — command execution failures (e.g.,
+  binary not found) are now handled gracefully: the mountpoint is always
+  unmounted and cleaned up before the process exits, and a descriptive
+  error message is printed to stderr. Previously the `status()` call would
+  panic on failure, skipping cleanup entirely.
+- **`create_temp_mountpoint` naming** — when the simple mountpoint name
+  already exists, the fallback now includes a random hex suffix derived
+  from a nanosecond timestamp mixed with the PID, guaranteeing uniqueness
+  even under concurrent test or process execution.
+
+### Fixed
+
+- **Cleanup on bad `run` commands** — `agentignore run` with a
+  nonexistent binary previously skipped unmount and directory removal
+  (the mountpoint leaked). Now cleanup runs unconditionally.
+
 ## [0.4.2] — 2026-06-02
 
 ### Added
