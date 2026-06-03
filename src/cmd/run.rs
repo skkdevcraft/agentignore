@@ -38,24 +38,37 @@ pub fn run(command: Vec<String>, source: Option<PathBuf>, show_config_files: boo
     // Split command into program and arguments
     let program = &command[0];
     let args = &command[1..];
+    let command_string = command.join(" "); // For error reporting
 
-    // Run the command
-    let status = ProcessCommand::new(program)
+    // Run the command and capture the result
+    let result = ProcessCommand::new(program)
         .args(args)
         .current_dir(&mountpoint)
-        .env("PWD", &mountpoint) // Update PWD for the child process
-        .status()
-        .expect("failed to execute command");
+        .env("PWD", &mountpoint)
+        .status();
 
-    // Unmount (this will cause the mount thread to exit)
+    // --- Cleanup (always performed, even if command fails) ---
     unmount_internal(&mountpoint);
 
-    // Clean up temp directory
-    let _ = std::fs::remove_dir(&mountpoint);
+    // Remove temp directory
+    if let Err(e) = std::fs::remove_dir(&mountpoint) {
+        eprintln!(
+            "Warning: failed to remove temporary directory {:?}: {}",
+            mountpoint, e
+        );
+    }
 
-    // Wait for mount thread to finish
+    // Wait for mount thread; ignore errors as the thread may have already panicked
     let _ = mount_handle.join();
 
-    // Exit with the command's exit code
-    std::process::exit(status.code().unwrap_or(1));
+    // --- Handle command result after cleanup ---
+    match result {
+        Ok(status) => {
+            std::process::exit(status.code().unwrap_or(1));
+        }
+        Err(e) => {
+            eprintln!("Failed to execute command '{}': {}", command_string, e);
+            std::process::exit(1);
+        }
+    }
 }

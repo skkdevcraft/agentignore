@@ -7,7 +7,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Create a temporary directory in the system temp directory to use as a
 /// mountpoint. The directory name is based on the last component of the
-/// source path. If that directory already exists, appends the process ID.
+/// source path. If that directory already exists, appends the process ID
+/// and a random hex suffix to guarantee uniqueness.
 ///
 /// # Panics
 ///
@@ -19,13 +20,24 @@ pub fn create_temp_mountpoint(source: &Path) -> PathBuf {
         .to_str()
         .expect("source path must be valid UTF-8");
 
-    // Try the simple name first
-    let dir = std::env::temp_dir().join(format!("agentignore/{}", base_name));
+    let tmp = std::env::temp_dir();
 
-    // If it already exists, append the process ID
+    // Try the simple name first
+    let dir = tmp.join(format!("agentignore/{}", base_name));
+
+    // If it already exists, append the process ID and a random hex suffix
     if dir.exists() {
-        let dir =
-            std::env::temp_dir().join(format!("agentignore/{}-{}", base_name, std::process::id()));
+        // Derive a pseudo-random suffix from the current nanosecond timestamp
+        // mixed with the PID to avoid collisions.
+        let random_suffix = {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos();
+            // Fold into a u64 with a large prime multiplier for good bit mixing
+            (nanos as u64) ^ (std::process::id() as u64).wrapping_mul(0x9e3779b97f4a7c15)
+        };
+        let dir = tmp.join(format!("agentignore/{}-{:016x}", base_name, random_suffix,));
         std::fs::create_dir_all(&dir).expect("failed to create temp mountpoint");
         dir
     } else {
