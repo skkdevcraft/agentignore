@@ -14,7 +14,5 @@
 Thumbs.db
 
 # Agent tooling
-.agents/
 .pi/
-skills-lock.json
 npm/

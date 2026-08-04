@@ -25,7 +25,7 @@ cargo install cargo-npm
 
 sudo apt-get install gcc-aarch64-linux-gnu
 sudo apt-get install gcc-x86-64-linux-gnu
-sudp apt-get build-essentials
+sudo apt-get install build-essentials
 
 rustup target add aarch64-unknown-linux-gnu
 rustup target add x86_64-unknown-linux-gnu
